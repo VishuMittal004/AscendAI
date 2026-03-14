@@ -1,0 +1,13 @@
+fastapi
+uvicorn
+pydantic[email]
+requests
+motor
+passlib[bcrypt]
+bcrypt==4.0.1
+python-jose[cryptography]
+python-dotenv
+pymongo
+PyMuPDF
+pytesseract
+Pillow

@@ -1,0 +1,172 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg-primary: #000000;
+  --bg-secondary: #000000;
+  --bg-card: #0a0a0a;
+  --bg-card-hover: #121212;
+  --border: #222222;
+  --border-active: #4f46e5;
+  --text-primary: #f1f1f4;
+  --text-secondary: #9191a8;
+  --text-muted: #5a5a72;
+  --accent: #6366f1;
+  --accent-light: #818cf8;
+  --accent-glow: rgba(99, 102, 241, 0.15);
+  --success: #22c55e;
+  --success-glow: rgba(34, 197, 94, 0.15);
+  --warning: #f59e0b;
+  --danger: #ef4444;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  overflow-x: hidden;
+}
+
+/* Scrollbar Styling */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg-primary);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
+
+/* Glass Card */
+@layer components {
+  .glass-card {
+    @apply rounded-2xl border backdrop-blur-sm;
+    background: var(--bg-card);
+    border-color: var(--border);
+  }
+
+  .glass-card-hover {
+    @apply glass-card transition-all duration-300;
+  }
+
+  .glass-card-hover:hover {
+    background: var(--bg-card-hover);
+    border-color: var(--border-active);
+    box-shadow: 0 0 30px var(--accent-glow);
+    transform: translateY(-2px);
+  }
+
+  .gradient-text {
+    @apply bg-clip-text text-transparent;
+    background-image: linear-gradient(135deg, var(--accent-light), #a78bfa, #c084fc);
+  }
+
+  .gradient-border {
+    position: relative;
+  }
+
+  .gradient-border::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 1rem;
+    padding: 1px;
+    background: linear-gradient(135deg, var(--accent), #a78bfa, #c084fc);
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+  }
+
+  .stat-card {
+    @apply glass-card p-5 flex flex-col gap-1;
+  }
+
+  .btn-primary {
+    @apply px-6 py-3 rounded-xl font-semibold text-white transition-all duration-300;
+    background: linear-gradient(135deg, var(--accent), #7c3aed);
+    box-shadow: 0 4px 15px var(--accent-glow);
+  }
+
+  .btn-primary:hover {
+    box-shadow: 0 8px 25px rgba(99, 102, 241, 0.3);
+    transform: translateY(-1px);
+  }
+
+  .btn-primary:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+  }
+
+  .btn-secondary {
+    @apply px-5 py-2.5 rounded-xl font-semibold transition-all duration-300 border;
+    background: transparent;
+    border-color: var(--border);
+    color: var(--text-secondary);
+  }
+
+  .btn-secondary:hover {
+    border-color: var(--accent);
+    color: var(--accent-light);
+    background: var(--accent-glow);
+  }
+
+  .btn-danger {
+    @apply px-5 py-2.5 rounded-xl font-semibold transition-all duration-300 border;
+    background: transparent;
+    border-color: rgba(239, 68, 68, 0.3);
+    color: #f87171;
+  }
+
+  .btn-danger:hover {
+    border-color: var(--danger);
+    background: rgba(239, 68, 68, 0.1);
+  }
+}
+
+/* Animated gradient background */
+.animated-bg {
+  background: #000000;
+}
+
+@keyframes gradientShift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* Pulse glow effect */
+@keyframes pulseGlow {
+  0%, 100% { box-shadow: 0 0 5px var(--accent-glow); }
+  50% { box-shadow: 0 0 20px var(--accent-glow); }
+}
+
+.pulse-glow {
+  animation: pulseGlow 2s ease-in-out infinite;
+}
+
+/* Progress bar animation */
+@keyframes progressFill {
+  from { width: 0%; }
+}
+
+.progress-animate {
+  animation: progressFill 1s ease-out;
+}
