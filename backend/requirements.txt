@@ -11,3 +11,4 @@ pymongo
 PyMuPDF
 pytesseract
 Pillow
+python-multipart
