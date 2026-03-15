@@ -114,7 +114,7 @@ const SessionHistory = ({ onClose, onActivate }) => {
                                     {/* Session Header */}
                                     <button
                                         onClick={() => handleExpand(session)}
-                                        className="w-full text-left p-4 hover:bg-white/3 transition-colors"
+                                        className="w-full text-left p-4 pb-3 hover:bg-white/3 transition-colors"
                                     >
                                         <div className="flex items-center justify-between">
                                             <div className="flex items-center gap-3">
@@ -124,29 +124,51 @@ const SessionHistory = ({ onClose, onActivate }) => {
                                                         Active
                                                     </span>
                                                 )}
-                                                <div className="flex flex-col text-left">
-                                                    <span className="text-sm font-semibold text-white">
-                                                        {session.goals_title || 'Empty Plan'}
-                                                    </span>
-                                                </div>
+                                                <span className="text-base font-bold text-white leading-tight">
+                                                    {session.goals_title || 'Empty Plan'}
+                                                </span>
                                             </div>
                                             <span className="text-gray-500 text-sm">{isExpanded ? '▲' : '▼'}</span>
                                         </div>
-                                        <div className="mt-2 flex items-center gap-4 text-xs text-gray-500">
+                                        <div className="mt-2 flex items-center gap-4 text-sm text-gray-500">
                                             <span>{formatDate(session.created_at)}</span>
                                             <span>{session.goal_count} goal{session.goal_count !== 1 ? 's' : ''}</span>
                                             <span>{session.completed_task_count}/{session.task_count} tasks done</span>
                                         </div>
                                         {/* Progress bar */}
                                         {session.task_count > 0 && (
-                                            <div className="mt-2 h-1.5 rounded-full bg-white/10 overflow-hidden">
+                                            <div className="mt-3 h-1.5 rounded-full bg-white/5 overflow-hidden">
                                                 <div
-                                                    className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 transition-all"
+                                                    className="h-full rounded-full bg-indigo-500 transition-all"
                                                     style={{ width: `${progress}%` }}
                                                 />
                                             </div>
                                         )}
                                     </button>
+
+                                    {/* Restore Button for inactive sessions */}
+                                    {!isActive && (
+                                        <div className="px-4 pb-4 pt-1">
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleActivate(session.id);
+                                                }}
+                                                className="w-full py-2.5 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 transition-colors border border-indigo-500/20"
+                                                style={{
+                                                    background: 'rgba(99,102,241,0.05)',
+                                                    color: '#818cf8'
+                                                }}
+                                                onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(99,102,241,0.1)'; }}
+                                                onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(99,102,241,0.05)'; }}
+                                            >
+                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                                </svg>
+                                                Restore this Plan
+                                            </button>
+                                        </div>
+                                    )}
 
                                     {/* Expanded Tasks */}
                                     <AnimatePresence>
@@ -160,16 +182,6 @@ const SessionHistory = ({ onClose, onActivate }) => {
                                                 style={{ borderColor: 'var(--border)' }}
                                             >
                                                 <div className="p-4 space-y-2 max-h-60 overflow-y-auto">
-                                                    {!isActive && (
-                                                        <div className="mb-4 flex justify-end">
-                                                            <button
-                                                                onClick={() => handleActivate(session.id)}
-                                                                className="text-xs px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-medium transition-colors"
-                                                            >
-                                                                Resume Plan on Dashboard
-                                                            </button>
-                                                        </div>
-                                                    )}
                                                     {loadingTasks ? (
                                                         <p className="text-xs text-gray-500 text-center py-4">Loading tasks...</p>
                                                     ) : sessionTasks.length === 0 ? (
