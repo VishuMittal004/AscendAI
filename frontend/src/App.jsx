@@ -246,7 +246,7 @@ function App() {
                     </div>
 
                     {/* Centered Motivational Quote */}
-                    <div className="hidden lg:flex flex-1 justify-center px-8">
+                    {/* <div className="hidden lg:flex flex-1 justify-center px-8">
                         <AnimatePresence mode="wait">
                             {headerQuote && (
                                 <motion.p
@@ -260,7 +260,7 @@ function App() {
                                 </motion.p>
                             )}
                         </AnimatePresence>
-                    </div>
+                    </div> */}
 
                     <div className="flex items-center gap-4 min-w-[200px] justify-end">
                         {stats.current_streak > 0 && (
