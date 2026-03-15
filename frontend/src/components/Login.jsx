@@ -76,15 +76,14 @@ const Login = ({ onLogin }) => {
 
                 {/* Logo */}
                 <div className="text-center mb-8 relative z-10">
-                    <motion.div
+                    <motion.img
                         initial={{ y: -20, opacity: 0 }}
                         animate={{ y: 0, opacity: 1 }}
                         transition={{ delay: 0.2 }}
-                        className="w-16 h-16 mx-auto rounded-2xl flex items-center justify-center text-xl mb-4 shadow-lg font-bold text-white tracking-widest"
-                        style={{ background: 'linear-gradient(135deg, var(--accent), #7c3aed)' }}
-                    >
-                        A
-                    </motion.div>
+                        src="/assets/images/AscenAI logo.png"
+                        alt="AscendAI Logo"
+                        className="w-16 h-16 mx-auto mb-4 object-contain drop-shadow-xl"
+                    />
                     <motion.h1
                         initial={{ y: -10, opacity: 0 }}
                         animate={{ y: 0, opacity: 1 }}
