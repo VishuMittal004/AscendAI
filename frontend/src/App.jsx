@@ -46,19 +46,6 @@ function App() {
     const [isAuthenticated, setIsAuthenticated] = useState(() => isTokenStored());
     const [currentUser, setCurrentUser] = useState(() => getStoredUser());
 
-    // ─── AI Toggle state ─────────────────────────────────────────────────────
-    const [isLocalAI, setIsLocalAI] = useState(() => {
-        const saved = localStorage.getItem('ascendai_local_ai');
-        return saved === null ? true : saved === 'true';
-    });
-    const [aiStatusMessage, setAiStatusMessage] = useState("");
-    const [showAIConfirm, setShowAIConfirm] = useState(false);
-    const [pendingGen, setPendingGen] = useState(null);
-
-    useEffect(() => {
-        localStorage.setItem('ascendai_local_ai', isLocalAI);
-    }, [isLocalAI]);
-
     // ─── UI State ─────────────────────────────────────────────────────────────
     const [showProfileMenu, setShowProfileMenu] = useState(false);
     const [showHistory, setShowHistory] = useState(false);
@@ -71,14 +58,14 @@ function App() {
         if (!isAuthenticated) return;
         const fetchHeaderQuote = async () => {
             try {
-                const data = await getQuote(isLocalAI);
+                const data = await getQuote();
                 setHeaderQuote(data.quote);
             } catch (error) {
                 console.error("Failed to fetch quote:", error);
             }
         };
         fetchHeaderQuote();
-    }, [isAuthenticated, isLocalAI]);
+    }, [isAuthenticated]);
 
     // ─── Email verification route ───────────────
     const [verifyMessage, setVerifyMessage] = useState('');
@@ -161,37 +148,12 @@ function App() {
         });
     };
 
-    // ─── AI Selection Logic ─────────────────────────────────────────────────
-    // Priority: 1) File uploaded → Cloud AI  2) Toggle preference  3) If Local + >5 days → confirm
-
-    const resolveAI = (days, file) => {
-        // Step 1: File uploaded → always cloud
-        if (file) return { useLocal: false, reason: 'file' };
-        // Step 2: Toggle set to Cloud → always cloud
-        if (!isLocalAI) return { useLocal: false, reason: 'toggle' };
-        // Step 3: Toggle is Local but days > 5 → needs confirmation
-        if (parseInt(days) > 5) return { useLocal: null, reason: 'confirm' };
-        // Step 4: Local AI, short plan
-        return { useLocal: true, reason: 'local' };
-    };
-
-    const setStatusForAI = (useLocal, file) => {
-        if (file) {
-            setAiStatusMessage("📎 File uploaded — using CLOUD AI.");
-        } else if (!useLocal) {
-            setAiStatusMessage("☁️ Using CLOUD AI (OpenRouter).");
-        } else {
-            setAiStatusMessage("Using MISTRAL 7B for this generation.");
-        }
-    };
-
-    const executeGenerate = async (goal, days, hours, forceRegenerate, difficulty, includeResources, file, useLocal) => {
+    const handleGenerate = async (goal, days, hours, forceRegenerate = false, difficulty = "Intermediate", includeResources = false, file = null) => {
         try {
             setGenerating(true);
             setActiveGoal(goal);
-            setStatusForAI(useLocal, file);
             setMessage("AI is crafting your personalized learning roadmap...");
-            await generatePlan(goal, days, hours, forceRegenerate, difficulty, includeResources, file, useLocal);
+            await generatePlan(goal, days, hours, forceRegenerate, difficulty, includeResources, file);
             setMessage(`Plan ready! Time to master ${goal}.`);
             setRefreshTrigger(prev => prev + 1);
         } catch (err) {
@@ -203,12 +165,11 @@ function App() {
         }
     };
 
-    const executeAddGoal = async (newGoal, days, hours, difficulty, includeResources, file, useLocal) => {
+    const handleAddGoal = async (newGoal, days, hours, difficulty = "Intermediate", includeResources = false, file = null) => {
         try {
             setGenerating(true);
-            setStatusForAI(useLocal, file);
             setMessage(`Architecting a path to merge ${newGoal} into your current plan...`);
-            await addGoalToPlan(newGoal, days, hours, difficulty, includeResources, file, useLocal);
+            await addGoalToPlan(newGoal, days, hours, difficulty, includeResources, file);
             setActiveGoal(prev => `${prev} & ${newGoal}`);
             setMessage(`Plan updated! Time to master ${newGoal} alongside your ongoing goals.`);
             setRefreshTrigger(prev => prev + 1);
@@ -220,40 +181,8 @@ function App() {
         }
     };
 
-    const handleGenerate = (goal, days, hours, forceRegenerate = false, difficulty = "Intermediate", includeResources = false, file = null) => {
-        const { useLocal, reason } = resolveAI(days, file);
-        if (reason === 'confirm') {
-            setPendingGen({ type: 'generate', args: [goal, days, hours, forceRegenerate, difficulty, includeResources, file] });
-            setShowAIConfirm(true);
-            return;
-        }
-        executeGenerate(goal, days, hours, forceRegenerate, difficulty, includeResources, file, useLocal);
-    };
-
     const handleImprovePlan = () => {
         if (activeGoal) handleGenerate(activeGoal, 5, 2, true);
-    };
-
-    const handleAddGoal = (newGoal, days, hours, difficulty = "Intermediate", includeResources = false, file = null) => {
-        const { useLocal, reason } = resolveAI(days, file);
-        if (reason === 'confirm') {
-            setPendingGen({ type: 'addGoal', args: [newGoal, days, hours, difficulty, includeResources, file] });
-            setShowAIConfirm(true);
-            return;
-        }
-        executeAddGoal(newGoal, days, hours, difficulty, includeResources, file, useLocal);
-    };
-
-    const handleAIConfirm = (switchToCloud) => {
-        setShowAIConfirm(false);
-        if (!pendingGen) return;
-        const useLocal = !switchToCloud;
-        if (pendingGen.type === 'generate') {
-            executeGenerate(...pendingGen.args, useLocal);
-        } else {
-            executeAddGoal(...pendingGen.args, useLocal);
-        }
-        setPendingGen(null);
     };
 
     const handleReset = async () => {
@@ -308,23 +237,7 @@ function App() {
                         </div>
                     </div>
 
-                    {/* AI Toggle & Status Message */}
-                    <div className="hidden lg:flex flex-1 flex-col items-center justify-center px-4 gap-1">
-                        <div className="flex items-center gap-3 bg-white/5 rounded-full px-4 py-1.5 border border-white/10 shadow-inner">
-                            <span className={`text-[10px] font-bold uppercase tracking-widest transition-colors ${!isLocalAI ? 'text-indigo-400' : 'text-gray-500'}`}>Cloud AI</span>
-                            <button onClick={() => setIsLocalAI(!isLocalAI)} className="w-10 h-5 bg-white/10 rounded-full relative transition-colors focus:outline-none focus:ring-1 focus:ring-white/20">
-                                <motion.div animate={{ x: isLocalAI ? 20 : 0 }} className="absolute left-0.5 top-0.5 w-4 h-4 rounded-full shadow-lg" style={{ background: isLocalAI ? 'var(--accent)' : '#fff' }} />
-                            </button>
-                            <span className={`text-[10px] font-bold uppercase tracking-widest transition-colors ${isLocalAI ? 'text-indigo-400' : 'text-gray-500'}`}>Local AI</span>
-                        </div>
-                        <AnimatePresence mode="wait">
-                            {aiStatusMessage && (
-                                <motion.p key={aiStatusMessage} initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -5 }} className="text-[10px] font-medium text-gray-400 italic tracking-wide">
-                                    {aiStatusMessage}
-                                </motion.p>
-                            )}
-                        </AnimatePresence>
-                    </div>
+                    {/* Header Controls */}
 
                     <div className="flex items-center gap-4 min-w-[200px] justify-end">
                         {stats.current_streak > 0 && (
@@ -365,7 +278,7 @@ function App() {
                 <StatsPanel stats={stats} />
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
                     <div className="lg:col-span-4 space-y-6">
-                        <GoalForm onGenerate={handleGenerate} generating={generating} onAddGoal={handleAddGoal} onReset={handleReset} hasActivePlan={stats.total_tasks > 0} isLocalAI={isLocalAI} />
+                        <GoalForm onGenerate={handleGenerate} generating={generating} onAddGoal={handleAddGoal} onReset={handleReset} hasActivePlan={stats.total_tasks > 0} />
                         <div className="lg:sticky lg:top-8"><QuickNotes forceRefresh={refreshTrigger} /></div>
                     </div>
                     <div className="lg:col-span-8">
@@ -379,48 +292,6 @@ function App() {
                 </div>
             </footer>
 
-            {/* ─── AI Confirmation Modal ─── */}
-            <AnimatePresence>
-                {showAIConfirm && (
-                    <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
-                    >
-                        <motion.div
-                            initial={{ scale: 0.95, opacity: 0 }}
-                            animate={{ scale: 1, opacity: 1 }}
-                            exit={{ scale: 0.95, opacity: 0 }}
-                            className="p-6 max-w-sm w-full mx-4 rounded-2xl border shadow-2xl"
-                            style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}
-                        >
-                            <div className="flex items-center gap-3 mb-4">
-                                <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl" style={{ background: 'rgba(251, 146, 60, 0.15)', border: '1px solid rgba(251, 146, 60, 0.3)' }}>⚠️</div>
-                                <h3 className="text-lg font-bold text-white">Long Plan Detected</h3>
-                            </div>
-                            <p className="text-gray-400 text-sm mb-6 leading-relaxed">
-                                Your plan is over <span className="text-white font-medium">5 days</span>. Local AI (Mistral 7B) may <span className="text-amber-400 font-medium">timeout</span> on longer plans. We recommend switching to Cloud AI for this generation.
-                            </p>
-                            <div className="flex gap-3">
-                                <button
-                                    onClick={() => handleAIConfirm(false)}
-                                    className="flex-1 py-2.5 rounded-xl text-gray-300 transition-colors hover:bg-white/5 border border-white/10 text-sm"
-                                >
-                                    Keep Local AI
-                                </button>
-                                <button
-                                    onClick={() => handleAIConfirm(true)}
-                                    className="flex-1 py-2.5 rounded-xl text-sm font-semibold transition-colors"
-                                    style={{ background: 'linear-gradient(135deg, var(--accent), #7c3aed)', color: 'white' }}
-                                >
-                                    Switch to Cloud AI
-                                </button>
-                            </div>
-                        </motion.div>
-                    </motion.div>
-                )}
-            </AnimatePresence>
         </div>
     );
 }
