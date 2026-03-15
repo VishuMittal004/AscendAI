@@ -221,8 +221,9 @@ function App() {
     return (
         <div className="min-h-screen animated-bg">
             {/* ─── History Modal ─── */}
+            <AnimatePresence>
                 {showHistory && (
-                    <SessionHistory 
+                    <SessionHistory
                         onClose={() => setShowHistory(false)}
                         onActivate={() => {
                             setShowHistory(false);
@@ -230,6 +231,7 @@ function App() {
                         }}
                     />
                 )}
+            </AnimatePresence>
 
             {/* ─── Header ─── */}
             <header className="border-b sticky top-0 z-40 backdrop-blur-md bg-black/50" style={{ borderColor: 'var(--border)' }}>
@@ -248,23 +250,6 @@ function App() {
                             <h1 className="text-lg font-bold text-white tracking-tight leading-none">AscendAI</h1>
                             <p className="text-[10px] text-gray-500 mt-1 uppercase tracking-wider font-semibold">AI-Powered Goal Architect</p>
                         </div>
-                    </div>
-
-                    {/* Centered Motivational Quote */}
-                    <div className="hidden lg:flex flex-1 justify-center px-8">
-                        <AnimatePresence mode="wait">
-                            {headerQuote && (
-                                <motion.p
-                                    key={headerQuote}
-                                    initial={{ opacity: 0, y: 5 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    className="text-sm font-medium italic text-gray-300 text-center max-w-xl line-clamp-1"
-                                    style={{ textShadow: '0 0 20px rgba(255,255,255,0.1)' }}
-                                >
-                                    "{headerQuote}"
-                                </motion.p>
-                            )}
-                        </AnimatePresence>
                     </div>
 
                     <div className="flex items-center gap-4 min-w-[200px] justify-end">
