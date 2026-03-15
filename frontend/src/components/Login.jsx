@@ -9,7 +9,6 @@ const Login = ({ onLogin }) => {
     const [username, setUsername] = useState('');
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
-    const [registeredEmail, setRegisteredEmail] = useState('');
 
     const handleLogin = async (e) => {
         e.preventDefault();
@@ -38,8 +37,9 @@ const Login = ({ onLogin }) => {
         setLoading(true);
         try {
             await register(username, email, password);
-            setRegisteredEmail(email);
-            setMode('verify-sent');
+            // Auto login directly after registration
+            const data = await login(email, password);
+            onLogin(data);
         } catch (err) {
             const detail = err.response?.data?.detail;
             const msg = Array.isArray(detail)
@@ -102,34 +102,6 @@ const Login = ({ onLogin }) => {
                 </div>
 
                 <AnimatePresence mode="wait">
-                    {/* Email Verification Sent Screen */}
-                    {mode === 'verify-sent' && (
-                        <motion.div
-                            key="verify-sent"
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, y: -10 }}
-                            className="text-center relative z-10"
-                        >
-                            <div className="w-16 h-16 mx-auto rounded-2xl flex items-center justify-center text-3xl mb-4"
-                                style={{ background: 'rgba(34,197,94,0.15)', border: '1px solid rgba(34,197,94,0.3)' }}>
-                                ✉️
-                            </div>
-                            <h2 className="text-xl font-bold text-white mb-2">Check your inbox!</h2>
-                            <p className="text-gray-400 text-sm leading-relaxed mb-6">
-                                We've sent a verification link to<br />
-                                <span className="text-indigo-400 font-medium">{registeredEmail}</span>
-                            </p>
-                            <p className="text-gray-500 text-xs mb-6">Click the link in the email to activate your account, then come back to log in.</p>
-                            <button
-                                onClick={() => switchMode('login')}
-                                className="w-full btn-primary py-3 text-sm font-semibold"
-                            >
-                                Go to Login
-                            </button>
-                        </motion.div>
-                    )}
-
                     {/* Login Form */}
                     {mode === 'login' && (
                         <motion.form
