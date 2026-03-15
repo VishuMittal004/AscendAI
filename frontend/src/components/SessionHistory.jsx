@@ -1,13 +1,27 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { getSessions, getSessionTasks, activateSession } from '../services/api';
+import { getSessions, getSessionTasks, restoreSession } from '../services/api';
 
-const SessionHistory = ({ onClose, onActivate }) => {
+const SessionHistory = ({ onClose, onRestore }) => {
     const [sessions, setSessions] = useState([]);
     const [loading, setLoading] = useState(true);
     const [expandedSession, setExpandedSession] = useState(null);
     const [sessionTasks, setSessionTasks] = useState([]);
     const [loadingTasks, setLoadingTasks] = useState(false);
+    const [restoringId, setRestoringId] = useState(null);
+
+    const handleRestore = async (sessionId) => {
+        setRestoringId(sessionId);
+        try {
+            await restoreSession(sessionId);
+            if (onRestore) onRestore();
+            onClose();
+        } catch (e) {
+            console.error('Failed to restore session', e);
+        } finally {
+            setRestoringId(null);
+        }
+    };
 
     useEffect(() => {
         const fetchSessions = async () => {
@@ -38,15 +52,6 @@ const SessionHistory = ({ onClose, onActivate }) => {
             console.error('Failed to load tasks', e);
         } finally {
             setLoadingTasks(false);
-        }
-    };
-
-    const handleActivate = async (sessionId) => {
-        try {
-            await activateSession(sessionId);
-            if (onActivate) onActivate();
-        } catch (e) {
-            console.error('Failed to activate session', e);
         }
     };
 
@@ -114,58 +119,69 @@ const SessionHistory = ({ onClose, onActivate }) => {
                                     {/* Session Header */}
                                     <button
                                         onClick={() => handleExpand(session)}
-                                        className="w-full text-left p-4 pb-3 hover:bg-white/3 transition-colors"
+                                        className="w-full text-left p-4 hover:bg-white/3 transition-colors"
                                     >
                                         <div className="flex items-center justify-between">
-                                            <div className="flex items-center gap-3">
+                                            <div className="flex items-center gap-3 min-w-0">
                                                 {isActive && (
-                                                    <span className="text-xs px-2 py-0.5 rounded-full font-medium"
+                                                    <span className="text-xs px-2 py-0.5 rounded-full font-medium flex-shrink-0"
                                                         style={{ background: 'rgba(99,102,241,0.15)', color: '#818cf8' }}>
                                                         Active
                                                     </span>
                                                 )}
-                                                <span className="text-base font-bold text-white leading-tight">
-                                                    {session.goals_title || 'Empty Plan'}
+                                                <span className="text-sm font-semibold text-white truncate">
+                                                    {session.goals && session.goals.length > 0
+                                                        ? session.goals.join(' · ')
+                                                        : session.name}
                                                 </span>
                                             </div>
-                                            <span className="text-gray-500 text-sm">{isExpanded ? '▲' : '▼'}</span>
+                                            <span className="text-gray-500 text-sm flex-shrink-0 ml-2">{isExpanded ? '▲' : '▼'}</span>
                                         </div>
-                                        <div className="mt-2 flex items-center gap-4 text-sm text-gray-500">
+                                        <div className="mt-2 flex items-center gap-4 text-xs text-gray-500">
                                             <span>{formatDate(session.created_at)}</span>
                                             <span>{session.goal_count} goal{session.goal_count !== 1 ? 's' : ''}</span>
                                             <span>{session.completed_task_count}/{session.task_count} tasks done</span>
                                         </div>
                                         {/* Progress bar */}
                                         {session.task_count > 0 && (
-                                            <div className="mt-3 h-1.5 rounded-full bg-white/5 overflow-hidden">
+                                            <div className="mt-2 h-1.5 rounded-full bg-white/10 overflow-hidden">
                                                 <div
-                                                    className="h-full rounded-full bg-indigo-500 transition-all"
+                                                    className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 transition-all"
                                                     style={{ width: `${progress}%` }}
                                                 />
                                             </div>
                                         )}
                                     </button>
 
-                                    {/* Restore Button for inactive sessions */}
+                                    {/* Restore Button (for non-active sessions) */}
                                     {!isActive && (
-                                        <div className="px-4 pb-4 pt-1">
+                                        <div className="px-4 pb-3">
                                             <button
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    handleActivate(session.id);
-                                                }}
-                                                className="w-full py-2.5 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 transition-colors border border-indigo-500/20"
+                                                onClick={(e) => { e.stopPropagation(); handleRestore(session.id); }}
+                                                disabled={restoringId === session.id}
+                                                className="w-full py-2 rounded-xl text-xs font-semibold transition-all flex items-center justify-center gap-2 border"
                                                 style={{
-                                                    background: 'rgba(99,102,241,0.05)',
+                                                    background: 'linear-gradient(135deg, rgba(99,102,241,0.1), rgba(124,58,237,0.1))',
+                                                    borderColor: 'rgba(99,102,241,0.3)',
                                                     color: '#818cf8'
                                                 }}
-                                                onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(99,102,241,0.1)'; }}
-                                                onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(99,102,241,0.05)'; }}
                                             >
-                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                                                </svg>
-                                                Restore this Plan
+                                                {restoringId === session.id ? (
+                                                    <>
+                                                        <svg className="animate-spin h-3.5 w-3.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                                                        </svg>
+                                                        Restoring...
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                                        </svg>
+                                                        Restore this Plan
+                                                    </>
+                                                )}
                                             </button>
                                         </div>
                                     )}
