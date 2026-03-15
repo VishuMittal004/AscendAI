@@ -63,7 +63,5 @@ async def get_current_user(
     user = await db.users.find_one({"_id": ObjectId(user_id)})
     if not user:
         raise HTTPException(status_code=401, detail="User not found")
-    if not user.get("is_verified"):
-        raise HTTPException(status_code=403, detail="Please verify your email before logging in")
 
     return user
