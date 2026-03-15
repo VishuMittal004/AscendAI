@@ -11,3 +11,4 @@ python-jose[cryptography]
 python-dotenv
 pymongo
 PyMuPDF
+pytesseract
