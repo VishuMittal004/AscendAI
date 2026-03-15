@@ -203,7 +203,7 @@ async def register(body: RegisterRequest, background_tasks: BackgroundTasks):
         "username": body.username,
         "email": body.email.lower(),
         "hashed_password": hash_password(body.password),
-        "is_verified": False,
+        "is_verified": True,
         "verification_token": token,
         "created_at": datetime.now(timezone.utc),
     }
