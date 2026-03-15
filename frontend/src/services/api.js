@@ -8,8 +8,8 @@ const api = axios.create({
     headers: { 'Content-Type': 'application/json' }
 });
 
-export const getQuote = async (useLocal = true) => {
-    const response = await api.get('/quote', { params: { use_local: useLocal } });
+export const getQuote = async () => {
+    const response = await api.get('/quote');
     return response.data;
 };
 
@@ -75,9 +75,9 @@ export const getSessionTasks = async (sessionId) => {
     return response.data;
 };
 
-export const analyzeSession = async (sessionId, useLocal = true) => {
+export const analyzeSession = async (sessionId) => {
     // Backend changed to POST for analyze
-    const response = await api.post(`/sessions/${sessionId}/analyze`, null, { params: { use_local: useLocal } });
+    const response = await api.post(`/sessions/${sessionId}/analyze`);
     return response.data;
 };
 
@@ -100,7 +100,7 @@ export const getStats = async () => {
 
 // ─── Plan Generation ───────────────────────────────────────────────────────
 
-export const generatePlan = async (goal, days, hours, forceRegenerate = false, difficulty = "Intermediate", includeResources = false, file = null, useLocal = true) => {
+export const generatePlan = async (goal, days, hours, forceRegenerate = false, difficulty = "Intermediate", includeResources = false, file = null) => {
     const formData = new FormData();
     formData.append('goal', goal);
     formData.append('days', parseInt(days));
@@ -111,7 +111,6 @@ export const generatePlan = async (goal, days, hours, forceRegenerate = false, d
     if (file) {
         formData.append('file', file);
     }
-    formData.append('use_local', useLocal);
 
     // Pass headers explicitly for this request to override the default JSON content type
     const response = await api.post('/generate', formData, {
@@ -120,7 +119,7 @@ export const generatePlan = async (goal, days, hours, forceRegenerate = false, d
     return response.data;
 };
 
-export const addGoalToPlan = async (newGoal, days, hours, difficulty = "Intermediate", includeResources = false, file = null, useLocal = true) => {
+export const addGoalToPlan = async (newGoal, days, hours, difficulty = "Intermediate", includeResources = false, file = null) => {
     const formData = new FormData();
     formData.append('new_goal', newGoal);
     formData.append('days', parseInt(days));
@@ -130,7 +129,6 @@ export const addGoalToPlan = async (newGoal, days, hours, difficulty = "Intermed
     if (file) {
         formData.append('file', file);
     }
-    formData.append('use_local', useLocal);
 
     const response = await api.post('/add-goal', formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
