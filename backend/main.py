@@ -18,8 +18,7 @@ from models import (
     SessionResponse, TaskResponse, StatsResponse,
     RecalibrateRequest
 )
-import ollama_client as local_ai
-import api_client as cloud_ai
+from api_client import generate_completion, OPENROUTER_MODEL
 from prompts import build_generation_prompt, build_midplan_addition_prompt, parse_llm_response, build_analysis_prompt, build_quote_prompt
 
 import fitz  # PyMuPDF
@@ -540,7 +539,7 @@ async def recalibrate_tasks(
 
 
 @app.post("/sessions/{session_id}/analyze")
-async def analyze_session(session_id: str, use_local: bool = Query(True), current_user=Depends(get_current_user)):
+async def analyze_session(session_id: str, current_user=Depends(get_current_user)):
     """Generate a performance analysis for a completed/ended session."""
     db = get_db()
     user_id = str(current_user["_id"])
@@ -572,11 +571,7 @@ async def analyze_session(session_id: str, use_local: bool = Query(True), curren
     prompt = build_analysis_prompt(goal_title, completed, incomplete)
     
     try:
-        # Select client
-        client = local_ai if use_local else cloud_ai
-        model = local_ai.DEFAULT_MODEL if use_local else cloud_ai.OPENROUTER_MODEL
-        
-        raw_response = await run_in_threadpool(client.generate_completion, prompt, model)
+        raw_response = await run_in_threadpool(generate_completion, prompt, OPENROUTER_MODEL)
         return {"analysis": raw_response}
     except Exception as e:
         print(f"Analysis Generation Error: {e}")
@@ -584,15 +579,11 @@ async def analyze_session(session_id: str, use_local: bool = Query(True), curren
 
 
 @app.get("/quote")
-async def get_quote(use_local: bool = Query(True)):
+async def get_quote():
     """Generate a dynamic motivational quote from the LLM."""
     prompt = build_quote_prompt()
     try:
-        # Select client based on flag
-        client = local_ai if use_local else cloud_ai
-        model = local_ai.DEFAULT_MODEL if use_local else cloud_ai.OPENROUTER_MODEL
-        
-        raw_response = await run_in_threadpool(client.generate_completion, prompt, model)
+        raw_response = await run_in_threadpool(generate_completion, prompt, OPENROUTER_MODEL)
         
         # Clean up the response (remove quotes, strip whitespace)
         quote = raw_response.strip().strip('"').strip("'")
@@ -712,7 +703,6 @@ async def generate_plan(
     difficulty: str = Form("Intermediate"),
     include_resources: bool = Form(False),
     file: UploadFile = File(None),
-    use_local: bool = Form(True),
     current_user=Depends(get_current_user)
 ):
     db = get_db()
@@ -762,13 +752,7 @@ async def generate_plan(
     # Generate plan with LLM (Offloaded to threadpool)
     prompt = build_generation_prompt(goal, days, hours_per_day, difficulty, include_resources, syllabus_text)
     
-    client = local_ai if use_local else cloud_ai
-    model = local_ai.DEFAULT_MODEL if use_local else cloud_ai.OPENROUTER_MODEL
-    
-    if use_local:
-        raw_response = await run_in_threadpool(client.generate_completion, prompt, model)
-    else:
-        raw_response = await run_in_threadpool(client.generate_completion, prompt, model, image_base64, image_mime_type)
+    raw_response = await run_in_threadpool(generate_completion, prompt, OPENROUTER_MODEL, image_base64, image_mime_type)
     parsed_data = parse_llm_response(raw_response)  # returns dict with 'goal_title' and 'days'
     parsed_days = parsed_data.get("days", [])
 
@@ -842,7 +826,6 @@ async def add_goal_to_plan(
     difficulty: str = Form("Intermediate"),
     include_resources: bool = Form(False),
     file: UploadFile = File(None),
-    use_local: bool = Form(True),
     current_user=Depends(get_current_user)
 ):
     db = get_db()
@@ -879,14 +862,7 @@ async def add_goal_to_plan(
         new_goal, days, hours_per_day, existing_summary, difficulty, include_resources, syllabus_text
     )
     
-    # Offloaded to threadpool
-    client = local_ai if use_local else cloud_ai
-    model = local_ai.DEFAULT_MODEL if use_local else cloud_ai.OPENROUTER_MODEL
-    
-    if use_local:
-        raw_response = await run_in_threadpool(client.generate_completion, prompt, model)
-    else:
-        raw_response = await run_in_threadpool(client.generate_completion, prompt, model, image_base64, image_mime_type)
+    raw_response = await run_in_threadpool(generate_completion, prompt, OPENROUTER_MODEL, image_base64, image_mime_type)
     parsed_data = parse_llm_response(raw_response)
     parsed_days = parsed_data.get("days", [])
 
