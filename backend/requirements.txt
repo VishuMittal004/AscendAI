@@ -1,5 +1,7 @@
 fastapi
 uvicorn
+gunicorn
+python-multipart
 pydantic[email]
 requests
 motor
@@ -9,6 +11,3 @@ python-jose[cryptography]
 python-dotenv
 pymongo
 PyMuPDF
-pytesseract
-Pillow
-python-multipart
