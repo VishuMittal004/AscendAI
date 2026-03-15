@@ -12,16 +12,19 @@ EMAIL_USER = os.getenv("EMAIL_USER")
 EMAIL_PASSWORD = os.getenv("EMAIL_PASSWORD")
 FRONTEND_URL = os.getenv("FRONTEND_URL")
 
+# Validate required environment variables
 if not FRONTEND_URL:
     raise ValueError("FRONTEND_URL environment variable is not set")
+
+if not EMAIL_USER:
+    raise ValueError("EMAIL_USER environment variable is not set")
+
+if not EMAIL_PASSWORD:
+    raise ValueError("EMAIL_PASSWORD environment variable is not set")
 
 
 def send_verification_email(to_email: str, username: str, token: str) -> bool:
     """Send an email verification link to the user."""
-    if not EMAIL_USER or not EMAIL_PASSWORD:
-        print("⚠️  Email not configured. Skipping email send.")
-        print(f"   Verification link: {FRONTEND_URL}/verify/{token}")
-        return False
 
     verify_url = f"{FRONTEND_URL}/verify/{token}"
 
@@ -34,7 +37,9 @@ def send_verification_email(to_email: str, username: str, token: str) -> bool:
         </div>
 
         <h2 style="font-size: 20px; font-weight: 600; margin-bottom: 8px;">Welcome, {username}!</h2>
-        <p style="color: #9191a8; line-height: 1.6;">Thanks for signing up. Please verify your email address to activate your account and start building your learning roadmaps.</p>
+        <p style="color: #9191a8; line-height: 1.6;">
+            Thanks for signing up. Please verify your email address to activate your account and start building your learning roadmaps.
+        </p>
 
         <div style="text-align: center; margin: 32px 0;">
             <a href="{verify_url}"
@@ -54,17 +59,26 @@ def send_verification_email(to_email: str, username: str, token: str) -> bool:
     msg["Subject"] = "Verify your AscendAI account"
     msg["From"] = f"AscendAI <{EMAIL_USER}>"
     msg["To"] = to_email
+
     msg.attach(MIMEText(html_body, "html"))
 
     try:
-        with smtplib.SMTP(EMAIL_HOST, EMAIL_PORT) as server:
+        print("📨 Attempting to send verification email...")
+        print("SMTP Host:", EMAIL_HOST)
+        print("SMTP Port:", EMAIL_PORT)
+        print("Email User:", EMAIL_USER)
+
+        with smtplib.SMTP(EMAIL_HOST, EMAIL_PORT, timeout=10) as server:
             server.ehlo()
             server.starttls()
             server.login(EMAIL_USER, EMAIL_PASSWORD)
             server.sendmail(EMAIL_USER, to_email, msg.as_string())
+
         print(f"✅ Verification email sent to {to_email}")
         return True
+
     except Exception as e:
-        print(f"❌ Email send failed: {e}")
-        print(f"   Verification link: {verify_url}")
+        print("❌ Email send failed")
+        print("Error:", e)
+        print(f"Verification link (manual): {verify_url}")
         return False
