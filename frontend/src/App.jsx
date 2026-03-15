@@ -75,8 +75,7 @@ function App() {
         const match = path.match(/^\/verify\/(.+)$/);
         if (match) {
             const token = match[1];
-            const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
-            fetch(`${apiUrl}/auth/verify/${token}`)
+            fetch(`http://localhost:8000/auth/verify/${token}`)
                 .then(r => r.json())
                 .then(data => {
                     setVerifyMessage(data.message || 'Email verified! You can now log in.');
@@ -222,9 +221,15 @@ function App() {
     return (
         <div className="min-h-screen animated-bg">
             {/* ─── History Modal ─── */}
-            <AnimatePresence>
-                {showHistory && <SessionHistory onClose={() => setShowHistory(false)} />}
-            </AnimatePresence>
+                {showHistory && (
+                    <SessionHistory 
+                        onClose={() => setShowHistory(false)}
+                        onActivate={() => {
+                            setShowHistory(false);
+                            setRefreshTrigger(prev => prev + 1);
+                        }}
+                    />
+                )}
 
             {/* ─── Header ─── */}
             <header className="border-b sticky top-0 z-40 backdrop-blur-md bg-black/50" style={{ borderColor: 'var(--border)' }}>
@@ -246,7 +251,7 @@ function App() {
                     </div>
 
                     {/* Centered Motivational Quote */}
-                    {/* <div className="hidden lg:flex flex-1 justify-center px-8">
+                    <div className="hidden lg:flex flex-1 justify-center px-8">
                         <AnimatePresence mode="wait">
                             {headerQuote && (
                                 <motion.p
@@ -260,7 +265,7 @@ function App() {
                                 </motion.p>
                             )}
                         </AnimatePresence>
-                    </div> */}
+                    </div>
 
                     <div className="flex items-center gap-4 min-w-[200px] justify-end">
                         {stats.current_streak > 0 && (
