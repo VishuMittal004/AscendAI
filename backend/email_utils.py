@@ -6,13 +6,13 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-BREVO_API_KEY = os.getenv("BREVO_API_KEY")
-EMAIL_FROM = os.getenv("EMAIL_FROM", "ascendaijiit@gmail.com")
+RESEND_API_KEY = os.getenv("RESEND_API_KEY")
+EMAIL_FROM = os.getenv("EMAIL_FROM", "AscendAI <onboarding@resend.dev>")
 FRONTEND_URL = os.getenv("FRONTEND_URL")
 
 
 def send_verification_email(to_email: str, username: str, token: str) -> bool:
-    """Send an email verification link via Brevo HTTP API."""
+    """Send an email verification link via Resend HTTP API."""
 
     verify_url = f"{FRONTEND_URL}/verify/{token}"
 
@@ -44,35 +44,34 @@ def send_verification_email(to_email: str, username: str, token: str) -> bool:
     """
 
     try:
-        print("📨 Sending verification email via Brevo HTTP API...", flush=True)
+        print("📨 Sending verification email via Resend...", flush=True)
         print(f"  From: {EMAIL_FROM}", flush=True)
         print(f"  To: {to_email}", flush=True)
-        print(f"  API Key present: {bool(BREVO_API_KEY)}", flush=True)
+        print(f"  API Key present: {bool(RESEND_API_KEY)}", flush=True)
 
         response = http_requests.post(
-            "https://api.brevo.com/v3/smtp/email",
+            "https://api.resend.com/emails",
             headers={
-                "api-key": BREVO_API_KEY,
+                "Authorization": f"Bearer {RESEND_API_KEY}",
                 "Content-Type": "application/json",
-                "Accept": "application/json",
             },
             json={
-                "sender": {"name": "AscendAI", "email": EMAIL_FROM},
-                "to": [{"email": to_email, "name": username}],
+                "from": EMAIL_FROM,
+                "to": [to_email],
                 "subject": "Verify your AscendAI account",
-                "htmlContent": html_body,
+                "html": html_body,
             },
             timeout=30,
         )
 
-        print(f"  Brevo response status: {response.status_code}", flush=True)
-        print(f"  Brevo response body: {response.text}", flush=True)
+        print(f"  Resend response status: {response.status_code}", flush=True)
+        print(f"  Resend response body: {response.text}", flush=True)
 
-        if response.status_code in (200, 201):
+        if response.status_code == 200:
             print(f"✅ Verification email sent to {to_email}", flush=True)
             return True
         else:
-            print(f"❌ Brevo API returned {response.status_code}: {response.text}", flush=True)
+            print(f"❌ Resend API returned {response.status_code}: {response.text}", flush=True)
             return False
 
     except Exception as e:
