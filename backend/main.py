@@ -22,8 +22,6 @@ from api_client import generate_completion
 from prompts import build_generation_prompt, build_midplan_addition_prompt, parse_llm_response, build_analysis_prompt, build_quote_prompt
 
 import fitz  # PyMuPDF
-import pytesseract
-from PIL import Image
 import io
 
 # ─── App Setup ────────────────────────────────────────────────────────────────
@@ -33,9 +31,12 @@ app = FastAPI(
     description="AI-powered learning plan generator with real authentication and session history."
 )
 
+import os as _os
+_frontend_url = _os.getenv("FRONTEND_URL", "http://localhost:5173")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["*", _frontend_url],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -155,9 +156,9 @@ async def extract_text_from_file(file: bytes, filename: str) -> str:
             for page in doc:
                 text += page.get_text() + "\n"
         elif filename_lower.endswith(('.png', '.jpg', '.jpeg')):
-            # OCR using pytesseract pushed to a threadpool to prevent event loop blocking
-            image = Image.open(io.BytesIO(file))
-            text = await asyncio.to_thread(pytesseract.image_to_string, image)
+            # Images are handled via OpenAI vision (base64) in the generation routes
+            # No server-side text extraction needed for images
+            pass
         elif filename_lower.endswith('.txt'):
             text = file.decode('utf-8', errors='ignore')
     except Exception as e:
