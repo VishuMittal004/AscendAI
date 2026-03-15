@@ -287,16 +287,49 @@ async def list_sessions(current_user=Depends(get_current_user)):
         sid = str(s["_id"])
         total = await db.tasks.count_documents({"session_id": sid})
         completed = await db.tasks.count_documents({"session_id": sid, "completed": True})
-        goal_count = await db.goals.count_documents({"session_id": sid})
+        
+        goals = await db.goals.find({"session_id": sid}).to_list(None)
+        goal_count = len(goals)
+        goals_title = " • ".join([g["title"] for g in goals]) if goals else None
+
         result.append(SessionResponse(
             id=sid,
             name=s["name"],
             created_at=s["created_at"],
+            goals_title=goals_title,
             goal_count=goal_count,
             task_count=total,
             completed_task_count=completed
         ))
     return result
+
+
+@app.post("/sessions/{session_id}/activate")
+async def activate_session(session_id: str, current_user=Depends(get_current_user)):
+    """Make a past session the active one to resume working on it."""
+    db = get_db()
+    user_id = str(current_user["_id"])
+
+    try:
+        obj_id = ObjectId(session_id)
+    except InvalidId:
+        raise HTTPException(400, "Invalid session ID format")
+
+    session = await db.sessions.find_one({"_id": obj_id, "user_id": user_id})
+    if not session:
+        raise HTTPException(404, "Session not found")
+
+    # Deactivate all
+    await db.sessions.update_many(
+        {"user_id": user_id, "is_active": True},
+        {"$set": {"is_active": False}}
+    )
+    # Activate selected
+    await db.sessions.update_one(
+        {"_id": obj_id},
+        {"$set": {"is_active": True}}
+    )
+    return {"message": "Session activated", "session_id": str(obj_id)}
 
 
 @app.get("/sessions/{session_id}/tasks")
