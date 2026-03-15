@@ -72,7 +72,7 @@ Use this EXACT structure:
   "days": [
     {{
       "day": 1,
-      "title": "Module Title",
+      "title": "Descriptive heading summarizing this day's focus (e.g., 'Foundations & Environment Setup', 'Sorting Algorithms Deep Dive')",
       "tasks": [
         {{
           "title": "Specific actionable task description",
@@ -153,7 +153,7 @@ Use this EXACT structure:
   "days": [
     {{
       "day": 1,
-      "title": "Module Title (Combining concepts)",
+      "title": "Descriptive heading summarizing this day's focus",
       "tasks": [
         {{
           "title": "Specific actionable task description",
