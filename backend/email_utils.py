@@ -1,5 +1,7 @@
 import smtplib
 import os
+import sys
+import traceback
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from dotenv import load_dotenv
@@ -54,23 +56,28 @@ def send_verification_email(to_email: str, username: str, token: str) -> bool:
     msg.attach(MIMEText(html_body, "html"))
 
     try:
-        print("📨 Attempting to send verification email...")
-        print("SMTP Host:", EMAIL_HOST)
-        print("SMTP Port:", EMAIL_PORT)
-        print("Email User:", EMAIL_USER)
-        print("Email From:", EMAIL_FROM)
+        print("📨 Attempting to send verification email...", flush=True)
+        print("SMTP Host:", EMAIL_HOST, flush=True)
+        print("SMTP Port:", EMAIL_PORT, flush=True)
+        print("Email User:", EMAIL_USER, flush=True)
+        print("Email From:", EMAIL_FROM, flush=True)
+        print("To:", to_email, flush=True)
 
-        with smtplib.SMTP(EMAIL_HOST, EMAIL_PORT, timeout=10) as server:
+        with smtplib.SMTP(EMAIL_HOST, EMAIL_PORT, timeout=30) as server:
+            server.set_debuglevel(1)
             server.ehlo()
             server.starttls()
             server.login(EMAIL_USER, EMAIL_PASSWORD)
             server.sendmail(EMAIL_FROM, to_email, msg.as_string())
 
-        print(f"✅ Verification email sent to {to_email}")
+        print(f"✅ Verification email sent to {to_email}", flush=True)
         return True
 
     except Exception as e:
-        print("❌ Email send failed")
-        print("Error:", e)
-        print(f"Verification link (manual): {verify_url}")
+        print("❌ Email send failed", flush=True)
+        print("Error:", e, flush=True)
+        traceback.print_exc()
+        sys.stdout.flush()
+        sys.stderr.flush()
+        print(f"Verification link (manual): {verify_url}", flush=True)
         return False
