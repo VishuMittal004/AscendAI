@@ -10,6 +10,7 @@ EMAIL_HOST = os.getenv("EMAIL_HOST", "smtp-relay.brevo.com")
 EMAIL_PORT = int(os.getenv("EMAIL_PORT", "587"))
 EMAIL_USER = os.getenv("EMAIL_USER")
 EMAIL_PASSWORD = os.getenv("EMAIL_PASSWORD")
+EMAIL_FROM = os.getenv("EMAIL_FROM", EMAIL_USER)  # Verified sender in Brevo
 FRONTEND_URL = os.getenv("FRONTEND_URL")
 
 
@@ -47,7 +48,7 @@ def send_verification_email(to_email: str, username: str, token: str) -> bool:
 
     msg = MIMEMultipart("alternative")
     msg["Subject"] = "Verify your AscendAI account"
-    msg["From"] = f"AscendAI <{EMAIL_USER}>"
+    msg["From"] = f"AscendAI <{EMAIL_FROM}>"
     msg["To"] = to_email
 
     msg.attach(MIMEText(html_body, "html"))
@@ -57,12 +58,13 @@ def send_verification_email(to_email: str, username: str, token: str) -> bool:
         print("SMTP Host:", EMAIL_HOST)
         print("SMTP Port:", EMAIL_PORT)
         print("Email User:", EMAIL_USER)
+        print("Email From:", EMAIL_FROM)
 
         with smtplib.SMTP(EMAIL_HOST, EMAIL_PORT, timeout=10) as server:
             server.ehlo()
             server.starttls()
             server.login(EMAIL_USER, EMAIL_PASSWORD)
-            server.sendmail(EMAIL_USER, to_email, msg.as_string())
+            server.sendmail(EMAIL_FROM, to_email, msg.as_string())
 
         print(f"✅ Verification email sent to {to_email}")
         return True
