@@ -12,16 +12,6 @@ EMAIL_USER = os.getenv("EMAIL_USER")
 EMAIL_PASSWORD = os.getenv("EMAIL_PASSWORD")
 FRONTEND_URL = os.getenv("FRONTEND_URL")
 
-# Validate required environment variables
-if not FRONTEND_URL:
-    raise ValueError("FRONTEND_URL environment variable is not set")
-
-if not EMAIL_USER:
-    raise ValueError("EMAIL_USER environment variable is not set")
-
-if not EMAIL_PASSWORD:
-    raise ValueError("EMAIL_PASSWORD environment variable is not set")
-
 
 def send_verification_email(to_email: str, username: str, token: str) -> bool:
     """Send an email verification link to the user."""
