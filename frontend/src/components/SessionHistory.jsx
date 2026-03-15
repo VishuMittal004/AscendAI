@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { getSessions, getSessionTasks } from '../services/api';
+import { getSessions, getSessionTasks, activateSession } from '../services/api';
 
-const SessionHistory = ({ onClose }) => {
+const SessionHistory = ({ onClose, onActivate }) => {
     const [sessions, setSessions] = useState([]);
     const [loading, setLoading] = useState(true);
     const [expandedSession, setExpandedSession] = useState(null);
@@ -38,6 +38,15 @@ const SessionHistory = ({ onClose }) => {
             console.error('Failed to load tasks', e);
         } finally {
             setLoadingTasks(false);
+        }
+    };
+
+    const handleActivate = async (sessionId) => {
+        try {
+            await activateSession(sessionId);
+            if (onActivate) onActivate();
+        } catch (e) {
+            console.error('Failed to activate session', e);
         }
     };
 
@@ -115,7 +124,11 @@ const SessionHistory = ({ onClose }) => {
                                                         Active
                                                     </span>
                                                 )}
-                                                <span className="text-sm font-semibold text-white">{session.name}</span>
+                                                <div className="flex flex-col text-left">
+                                                    <span className="text-sm font-semibold text-white">
+                                                        {session.goals_title || 'Empty Plan'}
+                                                    </span>
+                                                </div>
                                             </div>
                                             <span className="text-gray-500 text-sm">{isExpanded ? '▲' : '▼'}</span>
                                         </div>
@@ -147,6 +160,16 @@ const SessionHistory = ({ onClose }) => {
                                                 style={{ borderColor: 'var(--border)' }}
                                             >
                                                 <div className="p-4 space-y-2 max-h-60 overflow-y-auto">
+                                                    {!isActive && (
+                                                        <div className="mb-4 flex justify-end">
+                                                            <button
+                                                                onClick={() => handleActivate(session.id)}
+                                                                className="text-xs px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-medium transition-colors"
+                                                            >
+                                                                Resume Plan on Dashboard
+                                                            </button>
+                                                        </div>
+                                                    )}
                                                     {loadingTasks ? (
                                                         <p className="text-xs text-gray-500 text-center py-4">Loading tasks...</p>
                                                     ) : sessionTasks.length === 0 ? (
