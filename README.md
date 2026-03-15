@@ -1,10 +1,10 @@
 <div align="center">
   <img src="frontend/public/assets/images/AscenAI%20logo.png" width="150" alt="AscendAI Logo" />
   <h1>AscendAI — AI-Powered Goal Architect</h1>
-  <p><b>6th Semester Minor Project</b> | AI-driven adaptive learning plan generator with real-time task tracking, multi-goal support, and a premium dashboard UI.</p>
+  <p>AI-driven adaptive learning plan generator with real-time task tracking, multi-goal support, and a premium dashboard UI.</p>
   <br/>
-  <a href="http://localhost:5173" target="_blank">
-    <strong>🚀 Launch Application (Local)</strong>
+  <a href="https://ascend-ai-jiit.vercel.app/" target="_blank">
+    <strong>Launch Application</strong>
   </a>
 </div>
 
