@@ -1,23 +1,18 @@
-import smtplib
 import os
 import sys
 import traceback
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
+import requests as http_requests
 from dotenv import load_dotenv
 
 load_dotenv()
 
-EMAIL_HOST = os.getenv("EMAIL_HOST", "smtp-relay.brevo.com")
-EMAIL_PORT = int(os.getenv("EMAIL_PORT", "587"))
-EMAIL_USER = os.getenv("EMAIL_USER")
-EMAIL_PASSWORD = os.getenv("EMAIL_PASSWORD")
-EMAIL_FROM = os.getenv("EMAIL_FROM", EMAIL_USER)  # Verified sender in Brevo
+BREVO_API_KEY = os.getenv("BREVO_API_KEY")
+EMAIL_FROM = os.getenv("EMAIL_FROM", "ascendaijiit@gmail.com")
 FRONTEND_URL = os.getenv("FRONTEND_URL")
 
 
 def send_verification_email(to_email: str, username: str, token: str) -> bool:
-    """Send an email verification link to the user."""
+    """Send an email verification link via Brevo HTTP API."""
 
     verify_url = f"{FRONTEND_URL}/verify/{token}"
 
@@ -48,30 +43,37 @@ def send_verification_email(to_email: str, username: str, token: str) -> bool:
     </div>
     """
 
-    msg = MIMEMultipart("alternative")
-    msg["Subject"] = "Verify your AscendAI account"
-    msg["From"] = f"AscendAI <{EMAIL_FROM}>"
-    msg["To"] = to_email
-
-    msg.attach(MIMEText(html_body, "html"))
-
     try:
-        print("📨 Attempting to send verification email...", flush=True)
-        print("SMTP Host:", EMAIL_HOST, flush=True)
-        print("SMTP Port:", EMAIL_PORT, flush=True)
-        print("Email User:", EMAIL_USER, flush=True)
-        print("Email From:", EMAIL_FROM, flush=True)
-        print("To:", to_email, flush=True)
+        print("📨 Sending verification email via Brevo HTTP API...", flush=True)
+        print(f"  From: {EMAIL_FROM}", flush=True)
+        print(f"  To: {to_email}", flush=True)
+        print(f"  API Key present: {bool(BREVO_API_KEY)}", flush=True)
 
-        with smtplib.SMTP(EMAIL_HOST, EMAIL_PORT, timeout=30) as server:
-            server.set_debuglevel(1)
-            server.ehlo()
-            server.starttls()
-            server.login(EMAIL_USER, EMAIL_PASSWORD)
-            server.sendmail(EMAIL_FROM, to_email, msg.as_string())
+        response = http_requests.post(
+            "https://api.brevo.com/v3/smtp/email",
+            headers={
+                "api-key": BREVO_API_KEY,
+                "Content-Type": "application/json",
+                "Accept": "application/json",
+            },
+            json={
+                "sender": {"name": "AscendAI", "email": EMAIL_FROM},
+                "to": [{"email": to_email, "name": username}],
+                "subject": "Verify your AscendAI account",
+                "htmlContent": html_body,
+            },
+            timeout=30,
+        )
 
-        print(f"✅ Verification email sent to {to_email}", flush=True)
-        return True
+        print(f"  Brevo response status: {response.status_code}", flush=True)
+        print(f"  Brevo response body: {response.text}", flush=True)
+
+        if response.status_code in (200, 201):
+            print(f"✅ Verification email sent to {to_email}", flush=True)
+            return True
+        else:
+            print(f"❌ Brevo API returned {response.status_code}: {response.text}", flush=True)
+            return False
 
     except Exception as e:
         print("❌ Email send failed", flush=True)
