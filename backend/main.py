@@ -22,6 +22,8 @@ from api_client import generate_completion
 from prompts import build_generation_prompt, build_midplan_addition_prompt, parse_llm_response, build_analysis_prompt, build_quote_prompt
 
 import fitz  # PyMuPDF
+import pytesseract
+from PIL import Image
 import io
 
 # ─── App Setup ────────────────────────────────────────────────────────────────
@@ -31,12 +33,9 @@ app = FastAPI(
     description="AI-powered learning plan generator with real authentication and session history."
 )
 
-import os as _os
-_frontend_url = _os.getenv("FRONTEND_URL", "http://localhost:5173")
-
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*", _frontend_url],
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -156,9 +155,9 @@ async def extract_text_from_file(file: bytes, filename: str) -> str:
             for page in doc:
                 text += page.get_text() + "\n"
         elif filename_lower.endswith(('.png', '.jpg', '.jpeg')):
-            # Images are handled via OpenAI vision (base64) in the generation routes
-            # No server-side text extraction needed for images
-            pass
+            # OCR using pytesseract pushed to a threadpool to prevent event loop blocking
+            image = Image.open(io.BytesIO(file))
+            text = await asyncio.to_thread(pytesseract.image_to_string, image)
         elif filename_lower.endswith('.txt'):
             text = file.decode('utf-8', errors='ignore')
     except Exception as e:
@@ -196,43 +195,20 @@ async def register(body: RegisterRequest, background_tasks: BackgroundTasks):
             raise HTTPException(409, "An account with this email already exists")
         raise HTTPException(409, "This username is already taken")
 
-    # Create verification token
-    token = secrets.token_urlsafe(32)
-
     user_doc = {
         "username": body.username,
         "email": body.email.lower(),
         "hashed_password": hash_password(body.password),
         "is_verified": True,
-        "verification_token": token,
         "created_at": datetime.now(timezone.utc),
     }
     result = await db.users.insert_one(user_doc)
 
-    # Send email in background so registration response is instant
-    background_tasks.add_task(
-        send_verification_email, body.email, body.username, token
-    )
-
     return {
-        "message": "Account created! Please check your email to verify your account.",
+        "message": "Account created successfully!",
         "email": body.email,
         "username": body.username
     }
-
-
-@app.get("/auth/verify/{token}")
-async def verify_email(token: str):
-    db = get_db()
-    user = await db.users.find_one({"verification_token": token})
-    if not user:
-        raise HTTPException(400, "Invalid or expired verification token")
-
-    await db.users.update_one(
-        {"_id": user["_id"]},
-        {"$set": {"is_verified": True, "verification_token": None}}
-    )
-    return {"message": "Email verified successfully! You can now log in."}
 
 
 @app.post("/auth/login", response_model=TokenResponse)
@@ -242,9 +218,6 @@ async def login(body: LoginRequest):
 
     if not user or not verify_password(body.password, user["hashed_password"]):
         raise HTTPException(401, "Invalid email or password")
-
-    if not user.get("is_verified"):
-        raise HTTPException(403, "Please verify your email before logging in. Check your inbox.")
 
     token = create_access_token(
         str(user["_id"]), user["username"], user["email"]
