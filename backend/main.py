@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Depends, BackgroundTasks, File, Form, UploadFile
+from fastapi import FastAPI, HTTPException, Depends, status, Form, UploadFile, File, Query, BackgroundTasks
 from fastapi.concurrency import run_in_threadpool
 from fastapi.middleware.cors import CORSMiddleware
 from bson import ObjectId
@@ -18,12 +18,11 @@ from models import (
     SessionResponse, TaskResponse, StatsResponse,
     RecalibrateRequest
 )
-from api_client import generate_completion
+import ollama_client as local_ai
+import api_client as cloud_ai
 from prompts import build_generation_prompt, build_midplan_addition_prompt, parse_llm_response, build_analysis_prompt, build_quote_prompt
 
 import fitz  # PyMuPDF
-import pytesseract
-from PIL import Image
 import io
 
 # ─── App Setup ────────────────────────────────────────────────────────────────
@@ -33,9 +32,12 @@ app = FastAPI(
     description="AI-powered learning plan generator with real authentication and session history."
 )
 
+import os as _os
+_frontend_url = _os.getenv("FRONTEND_URL", "http://localhost:5173")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["*", _frontend_url],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -155,9 +157,9 @@ async def extract_text_from_file(file: bytes, filename: str) -> str:
             for page in doc:
                 text += page.get_text() + "\n"
         elif filename_lower.endswith(('.png', '.jpg', '.jpeg')):
-            # OCR using pytesseract pushed to a threadpool to prevent event loop blocking
-            image = Image.open(io.BytesIO(file))
-            text = await asyncio.to_thread(pytesseract.image_to_string, image)
+            # Images are handled via OpenAI vision (base64) in the generation routes
+            # No server-side text extraction needed for images
+            pass
         elif filename_lower.endswith('.txt'):
             text = file.decode('utf-8', errors='ignore')
     except Exception as e:
@@ -195,20 +197,43 @@ async def register(body: RegisterRequest, background_tasks: BackgroundTasks):
             raise HTTPException(409, "An account with this email already exists")
         raise HTTPException(409, "This username is already taken")
 
+    # Create verification token
+    token = secrets.token_urlsafe(32)
+
     user_doc = {
         "username": body.username,
         "email": body.email.lower(),
         "hashed_password": hash_password(body.password),
-        "is_verified": True,
+        "is_verified": False,
+        "verification_token": token,
         "created_at": datetime.now(timezone.utc),
     }
     result = await db.users.insert_one(user_doc)
 
+    # Send email in background so registration response is instant
+    background_tasks.add_task(
+        send_verification_email, body.email, body.username, token
+    )
+
     return {
-        "message": "Account created successfully!",
+        "message": "Account created! Please check your email to verify your account.",
         "email": body.email,
         "username": body.username
     }
+
+
+@app.get("/auth/verify/{token}")
+async def verify_email(token: str):
+    db = get_db()
+    user = await db.users.find_one({"verification_token": token})
+    if not user:
+        raise HTTPException(400, "Invalid or expired verification token")
+
+    await db.users.update_one(
+        {"_id": user["_id"]},
+        {"$set": {"is_verified": True, "verification_token": None}}
+    )
+    return {"message": "Email verified successfully! You can now log in."}
 
 
 @app.post("/auth/login", response_model=TokenResponse)
@@ -217,10 +242,13 @@ async def login(body: LoginRequest):
     user = await db.users.find_one({"email": body.email.lower()})
 
     if not user:
-        raise HTTPException(404, "Create an account first")
-        
+        raise HTTPException(404, "Account not found. Please create an account first.")
+
     if not verify_password(body.password, user["hashed_password"]):
-        raise HTTPException(401, "Invalid credentials")
+        raise HTTPException(401, "Invalid email or password")
+
+    if not user.get("is_verified"):
+        raise HTTPException(403, "Please verify your email before logging in. Check your inbox.")
 
     token = create_access_token(
         str(user["_id"]), user["username"], user["email"]
@@ -273,6 +301,36 @@ async def create_new_session(current_user=Depends(get_current_user)):
     }
 
 
+@app.post("/sessions/{session_id}/restore")
+async def restore_session(session_id: str, current_user=Depends(get_current_user)):
+    """Re-activate a past session so it appears on the dashboard again."""
+    db = get_db()
+    user_id = str(current_user["_id"])
+
+    try:
+        obj_id = ObjectId(session_id)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid session ID.")
+
+    target = await db.sessions.find_one({"_id": obj_id, "user_id": user_id})
+    if not target:
+        raise HTTPException(status_code=404, detail="Session not found.")
+
+    # Deactivate all sessions for this user
+    await db.sessions.update_many(
+        {"user_id": user_id, "is_active": True},
+        {"$set": {"is_active": False}}
+    )
+
+    # Activate the target session
+    await db.sessions.update_one(
+        {"_id": obj_id},
+        {"$set": {"is_active": True}}
+    )
+
+    return {"message": "Session restored successfully.", "session_id": session_id}
+
+
 @app.get("/sessions", response_model=List[SessionResponse])
 async def list_sessions(current_user=Depends(get_current_user)):
     """List all sessions for this user, newest first."""
@@ -287,49 +345,19 @@ async def list_sessions(current_user=Depends(get_current_user)):
         sid = str(s["_id"])
         total = await db.tasks.count_documents({"session_id": sid})
         completed = await db.tasks.count_documents({"session_id": sid, "completed": True})
-        
-        goals = await db.goals.find({"session_id": sid}).to_list(None)
-        goal_count = len(goals)
-        goals_title = " • ".join([g["title"] for g in goals]) if goals else None
-
+        goals_cursor = await db.goals.find({"session_id": sid}, {"title": 1}).to_list(None)
+        goal_titles = [g.get("title", "Untitled Goal") for g in goals_cursor]
+        goal_count = len(goal_titles)
         result.append(SessionResponse(
             id=sid,
             name=s["name"],
             created_at=s["created_at"],
-            goals_title=goals_title,
+            goals=goal_titles,
             goal_count=goal_count,
             task_count=total,
             completed_task_count=completed
         ))
     return result
-
-
-@app.post("/sessions/{session_id}/activate")
-async def activate_session(session_id: str, current_user=Depends(get_current_user)):
-    """Make a past session the active one to resume working on it."""
-    db = get_db()
-    user_id = str(current_user["_id"])
-
-    try:
-        obj_id = ObjectId(session_id)
-    except InvalidId:
-        raise HTTPException(400, "Invalid session ID format")
-
-    session = await db.sessions.find_one({"_id": obj_id, "user_id": user_id})
-    if not session:
-        raise HTTPException(404, "Session not found")
-
-    # Deactivate all
-    await db.sessions.update_many(
-        {"user_id": user_id, "is_active": True},
-        {"$set": {"is_active": False}}
-    )
-    # Activate selected
-    await db.sessions.update_one(
-        {"_id": obj_id},
-        {"$set": {"is_active": True}}
-    )
-    return {"message": "Session activated", "session_id": str(obj_id)}
 
 
 @app.get("/sessions/{session_id}/tasks")
@@ -363,6 +391,7 @@ async def get_session_tasks(session_id: str, current_user=Depends(get_current_us
             completed=t.get("completed", False),
             goal_title=goal_map.get(str(t.get("goal_id", "")), "Unknown"),
             goal_id=str(t.get("goal_id", "")),
+            day_concept=t.get("day_concept"),
             resources=t.get("resources", [])
         ) for t in tasks
     ]
@@ -394,6 +423,7 @@ async def get_tasks(current_user=Depends(get_current_user)):
             completed=t.get("completed", False),
             goal_title=goal_map.get(str(t.get("goal_id", "")), "Unknown"),
             goal_id=str(t.get("goal_id", "")),
+            day_concept=t.get("day_concept"),
             resources=t.get("resources", [])
         ) for t in tasks
     ]
@@ -509,8 +539,8 @@ async def recalibrate_tasks(
         raise HTTPException(500, f"Error recalibrating tasks: {str(e)}")
 
 
-@app.get("/sessions/{session_id}/analyze")
-async def analyze_session(session_id: str, current_user=Depends(get_current_user)):
+@app.post("/sessions/{session_id}/analyze")
+async def analyze_session(session_id: str, use_local: bool = Query(True), current_user=Depends(get_current_user)):
     """Generate a performance analysis for a completed/ended session."""
     db = get_db()
     user_id = str(current_user["_id"])
@@ -542,8 +572,11 @@ async def analyze_session(session_id: str, current_user=Depends(get_current_user
     prompt = build_analysis_prompt(goal_title, completed, incomplete)
     
     try:
-        # Offload LLM call to threadpool
-        raw_response = await run_in_threadpool(generate_completion, prompt)
+        # Select client
+        client = local_ai if use_local else cloud_ai
+        model = local_ai.DEFAULT_MODEL if use_local else cloud_ai.OPENROUTER_MODEL
+        
+        raw_response = await run_in_threadpool(client.generate_completion, prompt, model)
         return {"analysis": raw_response}
     except Exception as e:
         print(f"Analysis Generation Error: {e}")
@@ -551,14 +584,15 @@ async def analyze_session(session_id: str, current_user=Depends(get_current_user
 
 
 @app.get("/quote")
-async def get_quote():
+async def get_quote(use_local: bool = Query(True)):
     """Generate a dynamic motivational quote from the LLM."""
     prompt = build_quote_prompt()
     try:
-        # Generate the quote using the threadpool to avoid blocking
-        # We can use the existing generate_completion which defaults to the system model
-        from api_client import OPENROUTER_MODEL
-        raw_response = await run_in_threadpool(generate_completion, prompt, OPENROUTER_MODEL)
+        # Select client based on flag
+        client = local_ai if use_local else cloud_ai
+        model = local_ai.DEFAULT_MODEL if use_local else cloud_ai.OPENROUTER_MODEL
+        
+        raw_response = await run_in_threadpool(client.generate_completion, prompt, model)
         
         # Clean up the response (remove quotes, strip whitespace)
         quote = raw_response.strip().strip('"').strip("'")
@@ -678,6 +712,7 @@ async def generate_plan(
     difficulty: str = Form("Intermediate"),
     include_resources: bool = Form(False),
     file: UploadFile = File(None),
+    use_local: bool = Form(True),
     current_user=Depends(get_current_user)
 ):
     db = get_db()
@@ -726,8 +761,14 @@ async def generate_plan(
 
     # Generate plan with LLM (Offloaded to threadpool)
     prompt = build_generation_prompt(goal, days, hours_per_day, difficulty, include_resources, syllabus_text)
-    from api_client import OPENROUTER_MODEL
-    raw_response = await run_in_threadpool(generate_completion, prompt, OPENROUTER_MODEL, image_base64, image_mime_type)
+    
+    client = local_ai if use_local else cloud_ai
+    model = local_ai.DEFAULT_MODEL if use_local else cloud_ai.OPENROUTER_MODEL
+    
+    if use_local:
+        raw_response = await run_in_threadpool(client.generate_completion, prompt, model)
+    else:
+        raw_response = await run_in_threadpool(client.generate_completion, prompt, model, image_base64, image_mime_type)
     parsed_data = parse_llm_response(raw_response)  # returns dict with 'goal_title' and 'days'
     parsed_days = parsed_data.get("days", [])
 
@@ -755,6 +796,7 @@ async def generate_plan(
     minutes_per_task = max(15, int(hours_per_day * 60 / 3))
     for day_obj in parsed_days:
         day_num = day_obj.get("day", 1)
+        day_concept = day_obj.get("concept", None)
         for t in day_obj.get("tasks", []):
             # Parse time string like "30 min" or "1 hour" into minutes
             time_str = t.get("time", "")
@@ -772,6 +814,7 @@ async def generate_plan(
                 "user_id": user_id,
                 "description": t.get("title", t.get("description", "Study task")),
                 "day_number": day_num,
+                "day_concept": day_concept,
                 "minutes": mins,
                 "difficulty": t.get("difficulty", difficulty),
                 "completed": False,
@@ -799,6 +842,7 @@ async def add_goal_to_plan(
     difficulty: str = Form("Intermediate"),
     include_resources: bool = Form(False),
     file: UploadFile = File(None),
+    use_local: bool = Form(True),
     current_user=Depends(get_current_user)
 ):
     db = get_db()
@@ -836,8 +880,13 @@ async def add_goal_to_plan(
     )
     
     # Offloaded to threadpool
-    from api_client import OPENROUTER_MODEL
-    raw_response = await run_in_threadpool(generate_completion, prompt, OPENROUTER_MODEL, image_base64, image_mime_type)
+    client = local_ai if use_local else cloud_ai
+    model = local_ai.DEFAULT_MODEL if use_local else cloud_ai.OPENROUTER_MODEL
+    
+    if use_local:
+        raw_response = await run_in_threadpool(client.generate_completion, prompt, model)
+    else:
+        raw_response = await run_in_threadpool(client.generate_completion, prompt, model, image_base64, image_mime_type)
     parsed_data = parse_llm_response(raw_response)
     parsed_days = parsed_data.get("days", [])
 
@@ -864,6 +913,7 @@ async def add_goal_to_plan(
     minutes_per_task = max(15, int(hours_per_day * 60 / 3))
     for day_obj in parsed_days:
         day_num = day_obj.get("day", 1)
+        day_concept = day_obj.get("concept", None)
         for t in day_obj.get("tasks", []):
             time_str = t.get("time", "")
             mins = minutes_per_task
@@ -879,6 +929,7 @@ async def add_goal_to_plan(
                 "user_id": user_id,
                 "description": t.get("title", t.get("description", "Study task")),
                 "day_number": day_num,
+                "day_concept": day_concept,
                 "minutes": mins,
                 "difficulty": t.get("difficulty", difficulty), # Aligned difficulty
                 "completed": False,
