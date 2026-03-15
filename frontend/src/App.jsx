@@ -75,7 +75,8 @@ function App() {
         const match = path.match(/^\/verify\/(.+)$/);
         if (match) {
             const token = match[1];
-            fetch(`http://localhost:8000/auth/verify/${token}`)
+            const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+            fetch(`${apiUrl}/auth/verify/${token}`)
                 .then(r => r.json())
                 .then(data => {
                     setVerifyMessage(data.message || 'Email verified! You can now log in.');
