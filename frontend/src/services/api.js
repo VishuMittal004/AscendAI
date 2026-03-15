@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+const API_URL = 'http://localhost:8000';
 
 const api = axios.create({
     baseURL: API_URL,
@@ -75,6 +75,11 @@ export const analyzeSession = async (sessionId) => {
     return response.data;
 };
 
+export const activateSession = async (sessionId) => {
+    const response = await api.post(`/sessions/${sessionId}/activate`);
+    return response.data;
+};
+
 // ─── Tasks & Stats ─────────────────────────────────────────────────────────
 
 export const getTasks = async () => {
@@ -105,7 +110,7 @@ export const generatePlan = async (goal, days, hours, forceRegenerate = false, d
     if (file) {
         formData.append('file', file);
     }
-
+    
     // Pass headers explicitly for this request to override the default JSON content type
     const response = await api.post('/generate', formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
