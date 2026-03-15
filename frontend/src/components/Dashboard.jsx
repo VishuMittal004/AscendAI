@@ -369,8 +369,7 @@ const Dashboard = ({ forceRefresh, generating, onImprovePlan }) => {
                         const dayTasks = tasks.filter(t => t.day_number === dayNum);
                         const dayCompleted = dayTasks.every(t => t.completed);
                         const dayProgress = dayTasks.filter(t => t.completed).length;
-                        const taskDescriptions = dayTasks.map(t => t.description).join(' • ');
-                        const dayConcept = taskDescriptions || "Daily Tasks";
+                        const dayConcept = dayTasks[0]?.day_concept || (dayTasks[0]?.goal_title && dayTasks[0]?.goal_title !== 'Unknown' ? dayTasks[0]?.goal_title : "Daily Tasks");
 
                         // Calculate total time for the day in minutes directly
                         const dayTime = dayTasks.reduce((sum, t) => sum + (t.minutes || 30), 0);
@@ -403,9 +402,7 @@ const Dashboard = ({ forceRefresh, generating, onImprovePlan }) => {
                                             <span className="md:hidden inline-block text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-indigo-500/10 text-indigo-300 border border-indigo-500/20 mb-2">
                                                 Day {dayNum}
                                             </span>
-                                            <h3 className="text-lg font-bold text-white truncate max-w-[200px] md:max-w-md" title={dayConcept}>
-                                                {dayConcept}
-                                            </h3>
+                                            <h3 className="text-lg font-bold text-white">{dayConcept}</h3>
                                         </div>
                                         <div className="flex items-center gap-3">
                                             <span className="text-xs text-gray-500">
