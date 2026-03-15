@@ -8,9 +8,12 @@ load_dotenv()
 
 EMAIL_HOST = os.getenv("EMAIL_HOST", "smtp.gmail.com")
 EMAIL_PORT = int(os.getenv("EMAIL_PORT", "587"))
-EMAIL_USER = os.getenv("EMAIL_USER", "")
-EMAIL_PASSWORD = os.getenv("EMAIL_PASSWORD", "")
-FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
+EMAIL_USER = os.getenv("EMAIL_USER")
+EMAIL_PASSWORD = os.getenv("EMAIL_PASSWORD")
+FRONTEND_URL = os.getenv("FRONTEND_URL")
+
+if not FRONTEND_URL:
+    raise ValueError("FRONTEND_URL environment variable is not set")
 
 
 def send_verification_email(to_email: str, username: str, token: str) -> bool:
