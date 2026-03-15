@@ -216,8 +216,11 @@ async def login(body: LoginRequest):
     db = get_db()
     user = await db.users.find_one({"email": body.email.lower()})
 
-    if not user or not verify_password(body.password, user["hashed_password"]):
-        raise HTTPException(401, "Invalid email or password")
+    if not user:
+        raise HTTPException(404, "Create an account first")
+        
+    if not verify_password(body.password, user["hashed_password"]):
+        raise HTTPException(401, "Invalid credentials")
 
     token = create_access_token(
         str(user["_id"]), user["username"], user["email"]
