@@ -8,6 +8,7 @@ const Login = ({ onLogin }) => {
     const [password, setPassword] = useState('');
     const [username, setUsername] = useState('');
     const [error, setError] = useState('');
+    const [successMsg, setSuccessMsg] = useState('');
     const [loading, setLoading] = useState(false);
 
     const handleLogin = async (e) => {
@@ -37,9 +38,9 @@ const Login = ({ onLogin }) => {
         setLoading(true);
         try {
             await register(username, email, password);
-            // Auto login directly after registration
-            const data = await login(email, password);
-            onLogin(data);
+            setSuccessMsg('Account created! Try logging in again.');
+            setPassword(''); // Clear password field for safety
+            setMode('login');
         } catch (err) {
             const detail = err.response?.data?.detail;
             const msg = Array.isArray(detail)
@@ -54,6 +55,7 @@ const Login = ({ onLogin }) => {
     const switchMode = (newMode) => {
         setMode(newMode);
         setError('');
+        setSuccessMsg('');
         setEmail('');
         setPassword('');
         setUsername('');
@@ -122,6 +124,17 @@ const Login = ({ onLogin }) => {
                                     {error}
                                 </motion.div>
                             )}
+                            {successMsg && !error && (
+                                <motion.div
+                                    initial={{ opacity: 0, height: 0 }}
+                                    animate={{ opacity: 1, height: 'auto' }}
+                                    className="px-4 py-3 rounded-xl text-sm text-green-400 border border-green-500/30 mb-4"
+                                    style={{ background: 'rgba(34,197,94,0.08)' }}
+                                >
+                                    {successMsg}
+                                </motion.div>
+                            )}
+
                             <div>
                                 <label className="block text-sm font-medium text-gray-400 mb-2">Email</label>
                                 <input
