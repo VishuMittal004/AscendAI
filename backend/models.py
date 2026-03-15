@@ -34,6 +34,7 @@ class SessionResponse(BaseModel):
     id: str
     name: str
     created_at: datetime
+    goals_title: Optional[str] = None
     goal_count: int = 0
     task_count: int = 0
     completed_task_count: int = 0
