@@ -1,12 +1,18 @@
-# AscendAI — AI-Powered Goal Architect
-
-> **6th Semester Minor Project** | AI-driven adaptive learning plan generator with real-time task tracking, multi-goal support, and a premium dashboard UI.
+<div align="center">
+  <img src="frontend/public/assets/images/AscenAI%20logo.png" width="150" alt="AscendAI Logo" />
+  <h1>AscendAI — AI-Powered Goal Architect</h1>
+  <p><b>6th Semester Minor Project</b> | AI-driven adaptive learning plan generator with real-time task tracking, multi-goal support, and a premium dashboard UI.</p>
+  <br/>
+  <a href="http://localhost:5173" target="_blank">
+    <strong>🚀 Launch Application (Local)</strong>
+  </a>
+</div>
 
 ---
 
 ## Overview
 
-**AscendAI** is a full-stack web application that converts long-term personal and academic goals into structured, day-by-day learning roadmaps using a locally-running Large Language Model (LLM) via Ollama. The system adapts dynamically — users can add new goals mid-plan, and the AI intelligently merges them into the existing schedule. A persistent SQLite database stores all tasks, goals, and progress metrics, while a sleek React frontend delivers a real-time, animated dashboard experience.
+**AscendAI** is a full-stack web application that converts long-term personal and academic goals into structured, day-by-day learning roadmaps using a Large Language Model (LLM) via Cloud API. The system adapts dynamically — users can add new goals mid-plan, and the AI intelligently merges them into the existing schedule. A persistent MongoDB database stores all tasks, goals, and progress metrics, while a sleek React frontend delivers a real-time, animated dashboard experience.
 
 ---
 
@@ -20,7 +26,7 @@
 | **Adaptive Mid-Plan Goal Addition** | Add a new goal mid-way through a plan; the AI merges it with the remaining days of the existing plan, keeping both running simultaneously |
 | **Task Tracking** | Click to mark tasks as done; progress bars and stats update in real time |
 | **Streak Tracking** | Daily streaks are tracked automatically based on task completion activity |
-| **Persistent Storage** | All goals, tasks, and stats are saved to a local SQLite database — no data is lost on refresh |
+| **Persistent Storage** | All goals, tasks, and stats are saved to a MongoDB database — no data is lost on refresh |
 | **Live Stats Panel** | A real-time dashboard banner shows current streak, tasks done, overall progress %, and time invested |
 | **Reset / Start Fresh** | A guarded "Reset All" action with a confirmation modal clears all data for a clean restart |
 
@@ -28,7 +34,7 @@
 
 | Feature | Description |
 |---|---|
-| **Mock Authentication** | Login page with animated glassmorphism design; accepts any non-empty credentials |
+| **Authentication** | Login page with animated glassmorphism design and JWT session handling |
 | **Profile Dropdown Menu** | Profile button opens an animated dropdown with Profile, Stats & Reports, and Logout options |
 | **Animated Dashboard** | Full Framer Motion animations across all components — cards, banners, task entries, and modals |
 | **Stat Cards with Image Backgrounds** | Each stat card supports a blurred translucent background image with a per-card color glow effect |
@@ -60,18 +66,16 @@
 | Python | 3.10+ | Primary backend language |
 | FastAPI | Latest | REST API framework with automatic OpenAPI docs |
 | Uvicorn | Latest | ASGI server for running FastAPI |
-| SQLAlchemy | Latest | ORM for database interaction |
-| SQLite | Built-in | Local persistent storage (file: `goal_architect.db`) |
-| Pydantic | Latest | Request/response schema validation |
-| Ollama (local LLM) | — | Hosts local AI model (e.g. `phi3`) for plan generation |
-| Requests | Latest | HTTP calls from backend to Ollama API |
+| Motor / asyncio | Latest | Asynchronous MongoDB driver for Python |
+| MongoDB | Database | Stores sessions, goals, tasks, and auth data |
+| OpenRouter / Cloud API | AI Engine | Hosts LLM for plan generation |
 
 ### AI / LLM
 
 | Component | Description |
 |---|---|
-| **Ollama** | Local LLM runtime, runs entirely offline on the user's machine |
-| **Model** | `phi3` (Microsoft Phi-3) — configurable in `backend/.env` |
+| **OpenRouter / Cloud API** | Cloud-based LLM access, configurable via API key |
+| **Model** | `mistralai/mistral-7b-instruct-v0.2` (or similar) — configurable in `backend/.env` |
 | **Prompt Engineering** | Custom prompts in `prompts.py` for initial plan generation and mid-plan merging |
 | **JSON Parsing** | Robust extraction logic to parse structured JSON from LLM output |
 
@@ -82,20 +86,20 @@
 ```
 minor 6th sem/
 ├── backend/
-│   ├── main.py           # FastAPI app, all routes, DB setup, CORS
-│   ├── database.py       # SQLAlchemy models (DBGoal, DBTask, Stats)
+│   ├── main.py           # FastAPI entrypoint, endpoints
 │   ├── prompts.py        # LLM prompt templates
-│   ├── ollama_client.py  # Ollama API wrapper
-│   ├── api_client.py     # Internal HTTP utilities
+│   ├── api_client.py     # Cloud API wrapper
+│   ├── auth.py           # JWT, password hashing, authentication logic
+│   ├── mongo.py          # MongoDB configuration and connection utility
 │   ├── requirements.txt  # Python dependencies
-│   └── .env              # Environment config (model name, port)
+│   └── .env              # Environment config (model name, port, mongo URI)
 │
 ├── frontend/
 │   ├── src/
 │   │   ├── App.jsx               # Root component, state management, auth
 │   │   ├── index.css             # Global CSS, custom design tokens, animations
 │   │   ├── components/
-│   │   │   ├── Login.jsx         # Mock login page with glassmorphism UI
+│   │   │   ├── Login.jsx         # Login page with glassmorphism UI
 │   │   │   ├── Dashboard.jsx     # Main task dashboard, day-grouped view
 │   │   │   ├── GoalForm.jsx      # Goal input, presets, plan controls
 │   │   │   ├── StatsPanel.jsx    # Live stats cards with image backgrounds
@@ -104,7 +108,7 @@ minor 6th sem/
 │   │   └── services/
 │   │       └── api.js            # All Axios API calls to the backend
 │   ├── public/
-│   │   └── assets/images/        # Background images for stat cards
+│   │   └── assets/images/        # Background images for stat cards & logo
 │   ├── package.json
 │   ├── vite.config.js
 │   └── tailwind.config.js
@@ -124,7 +128,7 @@ minor 6th sem/
 | `POST` | `/generate` | Generate a full plan for a new goal |
 | `POST` | `/add-goal` | Add a new goal to an existing plan (mid-plan merge) |
 | `POST` | `/tasks/{id}/toggle` | Mark a task as complete/incomplete |
-| `DELETE` | `/reset` | Delete all data and reset stats |
+| `DELETE` | `/reset` | Delete all data and reset stats for new session |
 
 ### Example Request — Generate a Plan
 
@@ -134,30 +138,20 @@ curl -X POST http://localhost:8000/generate \
   -d '{"goal": "Master Data Structures", "days": 30, "hours_per_day": 2}'
 ```
 
-### Example Request — Add Goal Mid-Plan
-
-```bash
-curl -X POST http://localhost:8000/add-goal \
-  -H "Content-Type: application/json" \
-  -d '{"goal": "Learn Python Basics", "days": 14, "hours_per_day": 1}'
-```
-
 ---
 
 ## Setup & Run
 
 ### Prerequisites
 
-- Python 3.10+
-- Node.js 18+
-- [Ollama](https://ollama.com/) installed and running locally
-- The `phi3` model pulled: `ollama pull phi3`
+- [Node.js](https://nodejs.org/) (v16+)
+- [Python](https://python.org/) (v3.9+)
+- MongoDB connection string (local or Atlas)
 
 ### 1. Backend
 
 ```bash
 cd backend
-
 # Create and activate virtual environment (optional but recommended)
 python -m venv venv
 venv\Scripts\activate   # Windows
@@ -193,9 +187,9 @@ The app will be available at `http://localhost:5173`.
 ### Backend `.env`
 
 ```env
-MODEL_NAME=phi3
-OLLAMA_BASE_URL=http://localhost:11434
+OPENROUTER_API_KEY=your_openrouter_api_key_here
 PORT=8000
+MONGODB_URI=mongodb://localhost:27017
 ```
 
 ---
@@ -214,14 +208,14 @@ PORT=8000
 ┌─────────────────────────▼───────────────────────────────────┐
 │                  FastAPI Backend (Python)                    │
 │  ┌───────────┐   ┌───────────┐   ┌────────────────────────┐ │
-│  │  Routes   │   │  prompts  │   │   SQLAlchemy ORM       │ │
-│  │ main.py   │──▶│ prompts.py│   │   database.py          │ │
+│  │  Routes   │   │  prompts  │   │   Motor Async Driver   │ │
+│  │ main.py   │──▶│ prompts.py│   │   mongo.py             │ │
 │  └───────────┘   └─────┬─────┘   └───────────┬────────────┘ │
 └────────────────────────┼────────────────────-─┼─────────────┘
-                         │ HTTP                  │ SQL
+                         │ HTTP                  │ MongoDB
               ┌──────────▼──────────┐  ┌────────▼────────────┐
-              │  Ollama (Local LLM) │  │  SQLite Database    │
-              │  Model: phi3        │  │  goal_architect.db  │
+              │  OpenRouter (Cloud) │  │  MongoDB Cluster    │
+              │  Model: mistral-7b  │  │  AscendAI DB        │
               └─────────────────────┘  └─────────────────────┘
 ```
 
@@ -229,8 +223,8 @@ PORT=8000
 
 1. User enters a goal, timeline, and daily hours in the `GoalForm`
 2. The frontend sends a `POST /generate` request to FastAPI
-3. FastAPI builds a prompt using `prompts.py` and calls the Ollama API
-4. The LLM returns a JSON-structured plan; the backend parses and saves tasks to SQLite via SQLAlchemy
+3. FastAPI builds a prompt using `prompts.py` and calls the OpenRouter API
+4. The LLM returns a JSON-structured plan; the backend parses and saves tasks to MongoDB via Motor
 5. The frontend polls `/stats` every 2 seconds to keep the stats panel live
 6. When a task is toggled, `POST /tasks/{id}/toggle` updates the DB; streaks and progress recalculate server-side
 
@@ -238,12 +232,11 @@ PORT=8000
 
 ## Key Design Decisions
 
-- **Local LLM (Ollama)**: Chosen for privacy, zero API costs, and offline capability — ideal for an academic project environment
-- **SQLite**: Simple, zero-configuration, file-based database suitable for single-user local deployment
-- **Mock Auth**: Login page included for UI completeness; real authentication can be wired in later
-- **Framer Motion**: Used extensively for a premium, polished feel with minimal boilerplate
-- **CSS Variables**: All design tokens (colors, backgrounds) are centralized in `index.css` for easy theming
-- **Polling**: Stats are polled every 2 seconds instead of WebSockets to keep the backend simple
+- **Cloud AI Integration**: Shifted to OpenRouter API to allow for smarter LLMs like Mistral and fast inference.
+- **MongoDB**: Flexible NoSQL document structure fits nested session/goal/task analytics and user data perfectly.
+- **JWT Authentication**: Secure user session handling embedded into local requests and HTTP headers.
+- **Framer Motion**: Used extensively for a premium, polished feel with minimal boilerplate.
+- **CSS Variables**: All design tokens (colors, backgrounds) are centralized in `index.css` for easy theming.
 
 ---
 
