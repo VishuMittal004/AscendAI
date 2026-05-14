@@ -6,7 +6,7 @@ import ReactMarkdown from 'react-markdown';
 import TaskCard from './TaskCard';
 import { getTasks, recalibrateTasks, analyzeSession, exportData } from '../services/api';
 
-const Dashboard = ({ forceRefresh, generating, onImprovePlan }) => {
+const Dashboard = ({ forceRefresh, generating, onImprovePlan, isLocalAI }) => {
     const [tasks, setTasks] = useState([]);
     const [loading, setLoading] = useState(true);
     const [recalibrateModal, setRecalibrateModal] = useState({ isOpen: false, type: null, dayNumber: null });
@@ -94,7 +94,7 @@ const Dashboard = ({ forceRefresh, generating, onImprovePlan }) => {
                 pdf.setFont('helvetica', 'normal');
                 data.goals.forEach(g => {
                     checkPage();
-                    pdf.text(`• ${g}`, margin + 3, y);
+                    pdf.text(`- ${g}`, margin + 3, y);
                     y += 6;
                 });
                 y += 4;
@@ -125,7 +125,7 @@ const Dashboard = ({ forceRefresh, generating, onImprovePlan }) => {
                 pdf.setTextColor(0);
                 checkPage(15);
                 pdf.text('Day-wise Tasks', margin, y);
-                y += 10;
+                y += 8;
 
                 data.days.forEach(dayObj => {
                     checkPage(20);
@@ -133,38 +133,30 @@ const Dashboard = ({ forceRefresh, generating, onImprovePlan }) => {
                     pdf.setFont('helvetica', 'bold');
                     pdf.setTextColor(50, 50, 50);
                     pdf.text(`Day ${dayObj.day}`, margin, y);
-                    y += 7;
+                    y += 6;
 
                     dayObj.tasks.forEach(task => {
                         checkPage(18);
-                        // Use unicode bullets instead of bracket chars to avoid font switching
-                        const statusMark = task.completed ? '\u25CF' : '\u25CB'; // filled/empty circle
-                        const timeStr = task.minutes >= 60
-                            ? `${Math.round(task.minutes / 60 * 10) / 10} hrs`
-                            : `${task.minutes} min`;
+                        const status = task.completed ? '[X]' : '[ ]';
+                        const timeStr = task.minutes >= 60 ? `${Math.round(task.minutes / 60 * 10) / 10} hrs` : `${task.minutes} min`;
 
-                        const taskIndent = margin + 4;
-                        const taskMaxWidth = maxWidth - 8; // account for indent
-
-                        // Status mark
                         pdf.setFontSize(10);
                         pdf.setFont('helvetica', 'normal');
-                        pdf.setTextColor(task.completed ? 80 : 0);
-                        pdf.text(statusMark, margin, y);
+                        pdf.setTextColor(0);
 
-                        // Task description with word wrap — always starts at taskIndent
-                        const descLines = pdf.splitTextToSize(task.description, taskMaxWidth);
-                        descLines.forEach((line, lineIdx) => {
+                        // Task description with word wrap - trim to avoid hidden spaces
+                        const taskLine = `${status} ${task.description.trim()}`;
+                        const lines = pdf.splitTextToSize(taskLine, maxWidth - 6);
+                        lines.forEach(line => {
                             checkPage();
-                            pdf.text(line, taskIndent, y);
-                            if (lineIdx < descLines.length - 1) y += 5;
+                            pdf.text(line, margin + 5, y);
+                            y += 5;
                         });
-                        y += 5;
 
                         // Meta line (time, difficulty)
                         pdf.setFontSize(8);
                         pdf.setTextColor(120);
-                        pdf.text(`${timeStr}  \u2022  ${task.difficulty}`, taskIndent, y);
+                        pdf.text(`${timeStr} - ${task.difficulty}`, margin + 8, y);
                         y += 5;
 
                         // Resources
@@ -173,17 +165,17 @@ const Dashboard = ({ forceRefresh, generating, onImprovePlan }) => {
                             pdf.setTextColor(80, 80, 180);
                             task.resources.forEach(r => {
                                 checkPage();
-                                const rLines = pdf.splitTextToSize(`\u2192 ${r}`, maxWidth - taskIndent + margin - 2);
+                                const rText = String(r).trim();
+                                const rLines = pdf.splitTextToSize(`- ${rText}`, maxWidth - 12);
                                 rLines.forEach(rl => {
-                                    checkPage();
-                                    pdf.text(rl, taskIndent + 2, y);
+                                    pdf.text(rl, margin + 8, y);
                                     y += 4;
                                 });
                             });
                         }
-                        y += 3;
+                        y += 2;
                     });
-                    y += 5;
+                    y += 4;
                 });
             }
 
@@ -234,7 +226,7 @@ const Dashboard = ({ forceRefresh, generating, onImprovePlan }) => {
     const fetchAnalysis = async (sessionId) => {
         setAnalysisModal({ isOpen: true, content: null, loading: true });
         try {
-            const res = await analyzeSession(sessionId);
+            const res = await analyzeSession(sessionId, isLocalAI);
             setAnalysisModal({ isOpen: true, content: res.analysis, loading: false });
         } catch (err) {
             console.error(err);
@@ -466,7 +458,7 @@ const Dashboard = ({ forceRefresh, generating, onImprovePlan }) => {
                     <div className="flex-1">
                         <h3 className="text-lg font-bold text-white mb-6">Learning Trajectory</h3>
                         <div className="w-full h-64">
-                            <ResponsiveContainer width="100%" height="100%">
+                            <ResponsiveContainer width="100%" height="100%" minHeight={250} minWidth={0}>
                                 <LineChart data={chartData} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
                                     <Line type="monotone" dataKey="TasksCompleted" stroke="#6366f1" strokeWidth={3} dot={{ r: 4, fill: '#6366f1' }} activeDot={{ r: 8 }} />
                                     <CartesianGrid stroke="#222" strokeDasharray="5 5" vertical={false} />
@@ -675,10 +667,10 @@ const Dashboard = ({ forceRefresh, generating, onImprovePlan }) => {
                                                         pdf.setFont('helvetica', 'normal');
                                                         pdf.setTextColor(30);
                                                     } else {
-                                                        // Strip bold/italic markers
-                                                        const cleanText = trimmed.replace(/\*\*/g, '').replace(/\*/g, '').replace(/__/g, '').replace(/_/g, '');
+                                                        // Strip bold/italic markers and trim
+                                                        const cleanText = trimmed.replace(/\*\*/g, '').replace(/\*/g, '').replace(/__/g, '').replace(/_/g, '').trim();
                                                         const indent = trimmed.startsWith('- ') || trimmed.startsWith('* ') ? 4 : 0;
-                                                        const prefix = indent > 0 ? '• ' + cleanText.substring(2) : cleanText;
+                                                        const prefix = indent > 0 ? '• ' + cleanText.substring(2).trim() : cleanText;
                                                         const lines = pdf.splitTextToSize(prefix, maxWidth - indent);
                                                         lines.forEach(line => {
                                                             checkPage();
