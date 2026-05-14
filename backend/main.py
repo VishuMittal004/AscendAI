@@ -5,13 +5,12 @@ from bson import ObjectId
 from bson.errors import InvalidId
 from datetime import datetime, timezone, date, timedelta
 from typing import List, Optional
-import secrets
 import re
 import asyncio
 
 from mongo import connect_db, close_db, get_db
 from auth import hash_password, verify_password, create_access_token, get_current_user
-from email_utils import send_verification_email
+# email_utils imported but verification is disabled — accounts activate immediately
 from models import (
     RegisterRequest, LoginRequest, TokenResponse,
     GoalRequest, AddGoalRequest,
@@ -176,7 +175,7 @@ async def root():
 # ─── Auth Routes ──────────────────────────────────────────────────────────────
 
 @app.post("/auth/register", status_code=201)
-async def register(body: RegisterRequest, background_tasks: BackgroundTasks):
+async def register(body: RegisterRequest):
     db = get_db()
 
     # Validate username
@@ -196,26 +195,18 @@ async def register(body: RegisterRequest, background_tasks: BackgroundTasks):
             raise HTTPException(409, "An account with this email already exists")
         raise HTTPException(409, "This username is already taken")
 
-    # Create verification token
-    token = secrets.token_urlsafe(32)
-
+    # Account is active immediately — no email verification required
     user_doc = {
         "username": body.username,
         "email": body.email.lower(),
         "hashed_password": hash_password(body.password),
-        "is_verified": False,
-        "verification_token": token,
+        "is_verified": True,
         "created_at": datetime.now(timezone.utc),
     }
-    result = await db.users.insert_one(user_doc)
-
-    # Send email in background so registration response is instant
-    background_tasks.add_task(
-        send_verification_email, body.email, body.username, token
-    )
+    await db.users.insert_one(user_doc)
 
     return {
-        "message": "Account created! Please check your email to verify your account.",
+        "message": "Account created successfully! You can now log in.",
         "email": body.email,
         "username": body.username
     }
