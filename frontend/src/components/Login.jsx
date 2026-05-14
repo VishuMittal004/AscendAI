@@ -2,8 +2,11 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { login, register } from '../services/api';
 
+// Video background URL (same one used in the reference design)
+const BG_VIDEO = 'https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260306_074215_04640ca7-042c-45d6-bb56-58b1e8a42489.mp4';
+
 const Login = ({ onLogin }) => {
-    const [mode, setMode] = useState('login'); // 'login' | 'register' | 'verify-sent'
+    const [mode, setMode] = useState('login'); // 'login' | 'register'
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [username, setUsername] = useState('');
@@ -38,8 +41,8 @@ const Login = ({ onLogin }) => {
         setLoading(true);
         try {
             await register(username, email, password);
-            setSuccessMsg('Account created! Try logging in again.');
-            setPassword(''); // Clear password field for safety
+            setSuccessMsg('Account created! You can now sign in.');
+            setPassword('');
             setMode('login');
         } catch (err) {
             const detail = err.response?.data?.detail;
@@ -62,28 +65,59 @@ const Login = ({ onLogin }) => {
     };
 
     return (
-        <div className="min-h-screen flex items-center justify-center animated-bg px-6">
-            <motion.div
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.9 }}
-                transition={{ duration: 0.5, ease: "easeOut" }}
-                className="w-full max-w-md glass-card p-10 gradient-border shadow-2xl relative overflow-hidden"
-            >
-                {/* Decorative blobs */}
-                <div className="absolute -top-20 -right-20 w-40 h-40 bg-indigo-500/20 rounded-full blur-3xl pointer-events-none"></div>
-                <div className="absolute -bottom-20 -left-20 w-40 h-40 bg-purple-500/20 rounded-full blur-3xl pointer-events-none"></div>
+        <div className="min-h-screen flex items-center justify-center relative overflow-hidden px-6 bg-black">
 
-                {/* Logo */}
+            {/* ── Video Background ── */}
+            <video
+                autoPlay
+                loop
+                muted
+                playsInline
+                className="absolute inset-0 w-full h-full object-cover z-0"
+                style={{ opacity: 0.70 }}
+            >
+                <source src={BG_VIDEO} type="video/mp4" />
+            </video>
+
+            {/* ── Dark overlay for readability ── */}
+            <div className="absolute inset-0 bg-black/40 z-0 backdrop-blur-[2px]" />
+
+            {/* ── Glass Card ── */}
+            <motion.div
+                initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+                className="w-full max-w-md p-10 shadow-2xl relative z-10 overflow-hidden"
+                style={{
+                    background: 'rgba(10, 10, 18, 0.55)',
+                    backdropFilter: 'blur(28px)',
+                    WebkitBackdropFilter: 'blur(28px)',
+                    border: '1px solid rgba(255, 255, 255, 0.12)',
+                    boxShadow: '0 25px 60px -12px rgba(0, 0, 0, 0.8), inset 0 0 0 1px rgba(255, 255, 255, 0.05)',
+                    borderRadius: '32px',
+                }}
+            >
+                {/* Decorative blobs inside the card */}
+                <div className="absolute -top-20 -right-20 w-52 h-52 rounded-full blur-3xl pointer-events-none"
+                    style={{ background: 'rgba(99,102,241,0.25)' }} />
+                <div className="absolute -bottom-20 -left-20 w-52 h-52 rounded-full blur-3xl pointer-events-none"
+                    style={{ background: 'rgba(249,115,22,0.20)' }} />
+
+                {/* Logo + Title */}
                 <div className="text-center mb-8 relative z-10">
-                    <motion.img
+                    <motion.div
                         initial={{ y: -20, opacity: 0 }}
                         animate={{ y: 0, opacity: 1 }}
                         transition={{ delay: 0.2 }}
-                        src="/assets/images/AscenAI logo.png"
-                        alt="AscendAI Logo"
-                        className="w-16 h-16 mx-auto mb-4 object-contain drop-shadow-xl"
-                    />
+                        className="w-16 h-16 mx-auto mb-4 flex items-center justify-center"
+                    >
+                        <img
+                            src="/assets/images/AscenAI logo.png"
+                            alt="AscendAI Logo"
+                            className="w-full h-full object-contain drop-shadow-lg"
+                        />
+                    </motion.div>
                     <motion.h1
                         initial={{ y: -10, opacity: 0 }}
                         animate={{ y: 0, opacity: 1 }}
@@ -103,7 +137,8 @@ const Login = ({ onLogin }) => {
                 </div>
 
                 <AnimatePresence mode="wait">
-                    {/* Login Form */}
+
+                    {/* ── Login Form ── */}
                     {mode === 'login' && (
                         <motion.form
                             key="login"
@@ -127,19 +162,18 @@ const Login = ({ onLogin }) => {
                                 <motion.div
                                     initial={{ opacity: 0, height: 0 }}
                                     animate={{ opacity: 1, height: 'auto' }}
-                                    className="px-4 py-3 rounded-xl text-sm text-green-400 border border-green-500/30 mb-4"
+                                    className="px-4 py-3 rounded-xl text-sm text-emerald-400 border border-emerald-500/30"
                                     style={{ background: 'rgba(34,197,94,0.08)' }}
                                 >
                                     {successMsg}
                                 </motion.div>
                             )}
-
                             <div>
                                 <label className="block text-sm font-medium text-gray-400 mb-2">Email</label>
                                 <input
                                     type="email"
-                                    className="w-full px-4 py-4 rounded-xl border transition-all duration-300 text-white placeholder-gray-600 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 text-base"
-                                    style={{ background: 'rgba(0,0,0,0.2)', borderColor: 'var(--border)' }}
+                                    className="w-full px-4 py-4 rounded-xl border transition-all duration-300 text-white placeholder-gray-500 focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-400/30 text-base"
+                                    style={{ background: 'rgba(0,0,0,0.4)', borderColor: 'rgba(255,255,255,0.1)', backdropFilter: 'blur(10px)' }}
                                     placeholder="you@example.com"
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value)}
@@ -150,8 +184,8 @@ const Login = ({ onLogin }) => {
                                 <label className="block text-sm font-medium text-gray-400 mb-2">Password</label>
                                 <input
                                     type="password"
-                                    className="w-full px-4 py-4 rounded-xl border transition-all duration-300 text-white placeholder-gray-600 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 text-base"
-                                    style={{ background: 'rgba(0,0,0,0.2)', borderColor: 'var(--border)' }}
+                                    className="w-full px-4 py-4 rounded-xl border transition-all duration-300 text-white placeholder-gray-500 focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-400/30 text-base"
+                                    style={{ background: 'rgba(0,0,0,0.4)', borderColor: 'rgba(255,255,255,0.1)', backdropFilter: 'blur(10px)' }}
                                     placeholder="Your password"
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
@@ -163,7 +197,11 @@ const Login = ({ onLogin }) => {
                                 whileTap={{ scale: 0.98 }}
                                 type="submit"
                                 disabled={loading || !email.trim() || !password.trim()}
-                                className="w-full btn-primary py-4 text-base font-semibold tracking-wide rounded-xl shadow-lg mt-2 flex justify-center items-center gap-2"
+                                className="w-full py-4 text-base font-semibold tracking-wide rounded-xl shadow-lg mt-2 flex justify-center items-center gap-2 text-white hover:-translate-y-0.5 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                                style={{
+                                    background: 'linear-gradient(135deg, #f97316, #6366f1)',
+                                    boxShadow: '0 4px 20px rgba(249, 115, 22, 0.3)',
+                                }}
                             >
                                 {loading ? (
                                     <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -181,7 +219,7 @@ const Login = ({ onLogin }) => {
                         </motion.form>
                     )}
 
-                    {/* Register Form */}
+                    {/* ── Register Form ── */}
                     {mode === 'register' && (
                         <motion.form
                             key="register"
@@ -205,8 +243,8 @@ const Login = ({ onLogin }) => {
                                 <label className="block text-sm font-medium text-gray-400 mb-2">Username</label>
                                 <input
                                     type="text"
-                                    className="w-full px-4 py-3.5 rounded-xl border transition-all duration-300 text-white placeholder-gray-600 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
-                                    style={{ background: 'rgba(0,0,0,0.2)', borderColor: 'var(--border)' }}
+                                    className="w-full px-4 py-3.5 rounded-xl border transition-all duration-300 text-white placeholder-gray-500 focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-400/30"
+                                    style={{ background: 'rgba(0,0,0,0.4)', borderColor: 'rgba(255,255,255,0.1)', backdropFilter: 'blur(10px)' }}
                                     placeholder="e.g. john_doe"
                                     value={username}
                                     onChange={(e) => setUsername(e.target.value)}
@@ -217,8 +255,8 @@ const Login = ({ onLogin }) => {
                                 <label className="block text-sm font-medium text-gray-400 mb-2">Email</label>
                                 <input
                                     type="email"
-                                    className="w-full px-4 py-3.5 rounded-xl border transition-all duration-300 text-white placeholder-gray-600 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
-                                    style={{ background: 'rgba(0,0,0,0.2)', borderColor: 'var(--border)' }}
+                                    className="w-full px-4 py-3.5 rounded-xl border transition-all duration-300 text-white placeholder-gray-500 focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-400/30"
+                                    style={{ background: 'rgba(0,0,0,0.4)', borderColor: 'rgba(255,255,255,0.1)', backdropFilter: 'blur(10px)' }}
                                     placeholder="you@example.com"
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value)}
@@ -229,8 +267,8 @@ const Login = ({ onLogin }) => {
                                 <label className="block text-sm font-medium text-gray-400 mb-2">Password</label>
                                 <input
                                     type="password"
-                                    className="w-full px-4 py-3.5 rounded-xl border transition-all duration-300 text-white placeholder-gray-600 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
-                                    style={{ background: 'rgba(0,0,0,0.2)', borderColor: 'var(--border)' }}
+                                    className="w-full px-4 py-3.5 rounded-xl border transition-all duration-300 text-white placeholder-gray-500 focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-400/30"
+                                    style={{ background: 'rgba(0,0,0,0.4)', borderColor: 'rgba(255,255,255,0.1)', backdropFilter: 'blur(10px)' }}
                                     placeholder="Min. 6 characters"
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
@@ -242,7 +280,11 @@ const Login = ({ onLogin }) => {
                                 whileTap={{ scale: 0.98 }}
                                 type="submit"
                                 disabled={loading || !username.trim() || !email.trim() || !password.trim()}
-                                className="w-full btn-primary py-4 text-base font-semibold tracking-wide rounded-xl shadow-lg mt-2 flex justify-center items-center gap-2"
+                                className="w-full py-4 text-base font-semibold tracking-wide rounded-xl shadow-lg mt-2 flex justify-center items-center gap-2 text-white hover:-translate-y-0.5 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                                style={{
+                                    background: 'linear-gradient(135deg, #f97316, #6366f1)',
+                                    boxShadow: '0 4px 20px rgba(249, 115, 22, 0.3)',
+                                }}
                             >
                                 {loading ? (
                                     <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -259,6 +301,7 @@ const Login = ({ onLogin }) => {
                             </p>
                         </motion.form>
                     )}
+
                 </AnimatePresence>
             </motion.div>
         </div>
