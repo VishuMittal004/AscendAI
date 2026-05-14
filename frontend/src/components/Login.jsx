@@ -80,7 +80,7 @@ const Login = ({ onLogin }) => {
             </video>
 
             {/* ── Dark overlay for readability ── */}
-            <div className="absolute inset-0 bg-black/40 z-0 backdrop-blur-[2px]" />
+            <div className="absolute inset-0 bg-black/20 z-0 backdrop-blur-[1px]" />
 
             {/* ── Glass Card ── */}
             <motion.div
@@ -90,7 +90,7 @@ const Login = ({ onLogin }) => {
                 transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
                 className="w-full max-w-md p-10 shadow-2xl relative z-10 overflow-hidden"
                 style={{
-                    background: 'rgba(10, 10, 18, 0.55)',
+                    background: 'rgba(10, 10, 18, 0.35)',
                     backdropFilter: 'blur(28px)',
                     WebkitBackdropFilter: 'blur(28px)',
                     border: '1px solid rgba(255, 255, 255, 0.12)',
