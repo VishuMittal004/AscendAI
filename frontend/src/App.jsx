@@ -224,11 +224,11 @@ function App() {
     return (
         <div className="min-h-screen relative" style={{ background: '#08080f' }}>
             {/* ── Video background (same as login) ── */}
-            <BackgroundVideo src={BG_VIDEO} opacity={0.22} />
+            <BackgroundVideo src={BG_VIDEO} opacity={0.50} />
 
             {/* ── Dark overlay so dashboard cards stay readable ── */}
             <div className="fixed inset-0 z-0 pointer-events-none"
-                style={{ background: 'linear-gradient(to bottom, rgba(8,8,15,0.55) 0%, rgba(8,8,15,0.75) 100%)' }} />
+                style={{ background: 'linear-gradient(to bottom, rgba(8,8,15,0.25) 0%, rgba(8,8,15,0.45) 100%)' }} />
 
             {/* All dashboard content renders above the video */}
             <div className="relative z-10">
