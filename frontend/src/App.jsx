@@ -10,7 +10,7 @@ import BackgroundVideo from './components/BackgroundVideo';
 import { generatePlan, getStats, addGoalToPlan, resetAll, logout, isTokenStored, getStoredUser, getQuote } from './services/api';
 
 // Background video URL (shared between Login and Dashboard)
-const BG_VIDEO = 'https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260306_074215_04640ca7-042c-45d6-bb56-58b1e8a42489.mp4';
+const BG_VIDEO = 'https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260418_115655_b4d9cd77-feed-43cd-a198-af78ebdf1f7a.mp4';
 
 const motivationalMessages = [
     "Discipline whispers when motivation disappears; listen to it and move anyway.",
@@ -310,4 +310,3 @@ function App() {
 }
 
 export default App;
-
