@@ -125,7 +125,7 @@ const Dashboard = ({ forceRefresh, generating, onImprovePlan }) => {
                 pdf.setTextColor(0);
                 checkPage(15);
                 pdf.text('Day-wise Tasks', margin, y);
-                y += 8;
+                y += 10;
 
                 data.days.forEach(dayObj => {
                     checkPage(20);
@@ -133,30 +133,38 @@ const Dashboard = ({ forceRefresh, generating, onImprovePlan }) => {
                     pdf.setFont('helvetica', 'bold');
                     pdf.setTextColor(50, 50, 50);
                     pdf.text(`Day ${dayObj.day}`, margin, y);
-                    y += 6;
+                    y += 7;
 
                     dayObj.tasks.forEach(task => {
                         checkPage(18);
-                        const status = task.completed ? '[✓]' : '[ ]';
-                        const timeStr = task.minutes >= 60 ? `${Math.round(task.minutes / 60 * 10) / 10} hrs` : `${task.minutes} min`;
+                        // Use unicode bullets instead of bracket chars to avoid font switching
+                        const statusMark = task.completed ? '\u25CF' : '\u25CB'; // filled/empty circle
+                        const timeStr = task.minutes >= 60
+                            ? `${Math.round(task.minutes / 60 * 10) / 10} hrs`
+                            : `${task.minutes} min`;
 
+                        const taskIndent = margin + 4;
+                        const taskMaxWidth = maxWidth - 8; // account for indent
+
+                        // Status mark
                         pdf.setFontSize(10);
                         pdf.setFont('helvetica', 'normal');
-                        pdf.setTextColor(0);
+                        pdf.setTextColor(task.completed ? 80 : 0);
+                        pdf.text(statusMark, margin, y);
 
-                        // Task description with word wrap
-                        const taskLine = `${status} ${task.description}`;
-                        const lines = pdf.splitTextToSize(taskLine, maxWidth - 6);
-                        lines.forEach(line => {
+                        // Task description with word wrap — always starts at taskIndent
+                        const descLines = pdf.splitTextToSize(task.description, taskMaxWidth);
+                        descLines.forEach((line, lineIdx) => {
                             checkPage();
-                            pdf.text(line, margin + 5, y);
-                            y += 5;
+                            pdf.text(line, taskIndent, y);
+                            if (lineIdx < descLines.length - 1) y += 5;
                         });
+                        y += 5;
 
                         // Meta line (time, difficulty)
                         pdf.setFontSize(8);
                         pdf.setTextColor(120);
-                        pdf.text(`${timeStr} • ${task.difficulty}`, margin + 8, y);
+                        pdf.text(`${timeStr}  \u2022  ${task.difficulty}`, taskIndent, y);
                         y += 5;
 
                         // Resources
@@ -165,16 +173,17 @@ const Dashboard = ({ forceRefresh, generating, onImprovePlan }) => {
                             pdf.setTextColor(80, 80, 180);
                             task.resources.forEach(r => {
                                 checkPage();
-                                const rLines = pdf.splitTextToSize(`↳ ${r}`, maxWidth - 12);
+                                const rLines = pdf.splitTextToSize(`\u2192 ${r}`, maxWidth - taskIndent + margin - 2);
                                 rLines.forEach(rl => {
-                                    pdf.text(rl, margin + 8, y);
+                                    checkPage();
+                                    pdf.text(rl, taskIndent + 2, y);
                                     y += 4;
                                 });
                             });
                         }
-                        y += 2;
+                        y += 3;
                     });
-                    y += 4;
+                    y += 5;
                 });
             }
 
