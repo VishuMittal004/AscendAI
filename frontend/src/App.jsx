@@ -6,7 +6,11 @@ import GoalForm from './components/GoalForm';
 import QuickNotes from './components/QuickNotes';
 import Login from './components/Login';
 import SessionHistory from './components/SessionHistory';
+import BackgroundVideo from './components/BackgroundVideo';
 import { generatePlan, getStats, addGoalToPlan, resetAll, logout, isTokenStored, getStoredUser, getQuote } from './services/api';
+
+// Background video URL (shared between Login and Dashboard)
+const BG_VIDEO = 'https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260306_074215_04640ca7-042c-45d6-bb56-58b1e8a42489.mp4';
 
 const motivationalMessages = [
     "Discipline whispers when motivation disappears; listen to it and move anyway.",
@@ -218,7 +222,16 @@ function App() {
     }
 
     return (
-        <div className="min-h-screen animated-bg">
+        <div className="min-h-screen relative" style={{ background: '#08080f' }}>
+            {/* ── Video background (same as login) ── */}
+            <BackgroundVideo src={BG_VIDEO} opacity={0.22} />
+
+            {/* ── Dark overlay so dashboard cards stay readable ── */}
+            <div className="fixed inset-0 z-0 pointer-events-none"
+                style={{ background: 'linear-gradient(to bottom, rgba(8,8,15,0.55) 0%, rgba(8,8,15,0.75) 100%)' }} />
+
+            {/* All dashboard content renders above the video */}
+            <div className="relative z-10">
             <AnimatePresence>
                 {showHistory && <SessionHistory onClose={() => setShowHistory(false)} onRestore={() => setRefreshTrigger(prev => prev + 1)} />}
             </AnimatePresence>
@@ -291,7 +304,7 @@ function App() {
                     <p>© {new Date().getFullYear()} AscendAI. All rights reserved.</p>
                 </div>
             </footer>
-
+            </div>{/* end z-10 content wrapper */}
         </div>
     );
 }
